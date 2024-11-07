@@ -1,4 +1,4 @@
-use super::token::{Token, TokenType};
+use super::token::{Error, Token, TokenType};
 
 pub struct Scanner<'a> {
     source: &'a str,
@@ -6,6 +6,7 @@ pub struct Scanner<'a> {
     start: usize,
     current: usize,
     line: usize,
+    errors: Vec<Error>,
 }
 
 impl<'a> Scanner<'a> {
@@ -16,6 +17,7 @@ impl<'a> Scanner<'a> {
             start: 0,
             current: 0,
             line: 1,
+            errors: Vec::new(),
         }
     }
 
@@ -23,14 +25,14 @@ impl<'a> Scanner<'a> {
     pub fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
-    pub fn scan_tokens(&mut self) -> &Vec<Token<'a>> {
+    pub fn scan_tokens(&mut self) -> (&Vec<Token<'a>>, &Vec<Error>) {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token();
         }
         self.tokens
             .push(Token::new(TokenType::Eof, "", None, self.line));
-        &self.tokens
+        (&self.tokens, &self.errors)
     }
     pub fn scan_token(&mut self) {
         let c = self.advance();
@@ -46,7 +48,11 @@ impl<'a> Scanner<'a> {
             ';' => self.add_token(TokenType::Semicolon),
             '*' => self.add_token(TokenType::Star),
             _ => {
-                self.identifier();
+                self.errors.push(Error {
+                    line: self.line,
+                    message: format!("Unexpected character: {}", c),
+                });
+                // self.identifier();
             }
         }
     }
@@ -62,4 +68,8 @@ impl<'a> Scanner<'a> {
             .push(Token::new(token_type, text, None, self.line));
     }
     pub fn identifier(&mut self) {}
+
+    pub fn get_errors(&self) -> &Vec<Error> {
+        &self.errors
+    }
 }

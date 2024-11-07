@@ -23,9 +23,15 @@ fn main() {
 
             if !file_contents.is_empty() {
                 let mut s = scanner::Scanner::new(&file_contents);
-                let tokens = s.scan_tokens();
+                let (tokens, errors) = s.scan_tokens();
+                for err in errors {
+                    eprintln!("{}", err);
+                }
                 for token in tokens {
                     println!("{}", token.to_string());
+                }
+                if !errors.is_empty() {
+                    std::process::exit(65);
                 }
             } else {
                 println!("EOF  null");

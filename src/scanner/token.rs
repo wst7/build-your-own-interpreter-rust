@@ -1,16 +1,19 @@
-// Single-character tokens
+
+
+use std::fmt::{self, Display};
 
 pub enum TokenType {
+  // Single-character tokens
     LeftParen,
     RightParen,
     LeftBrace,
     RightBrace,
     Comma,
-  Dot,
-  Minus,
-  Plus,
-  Semicolon,
-  Star,
+    Dot,
+    Minus,
+    Plus,
+    Semicolon,
+    Star,
     Eof,
 }
 
@@ -63,5 +66,16 @@ impl ToString for Token<'_> {
             self.lexeme,
             self.literal.map_or("null", |x| x)
         )
+    }
+}
+
+pub struct Error {
+    pub message: String,
+    pub line: usize,
+}
+
+impl Display for Error {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "[line {}] Error: {}", self.line, self.message)
     }
 }
