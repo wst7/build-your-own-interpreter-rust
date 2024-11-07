@@ -39,6 +39,12 @@ impl<'a> Scanner<'a> {
             ')' => self.add_token(TokenType::RightParen),
             '{' => self.add_token(TokenType::LeftBrace),
             '}' => self.add_token(TokenType::RightBrace),
+            ',' => self.add_token(TokenType::Comma),
+            '.' => self.add_token(TokenType::Dot),
+            '-' => self.add_token(TokenType::Minus),
+            '+' => self.add_token(TokenType::Plus),
+            ';' => self.add_token(TokenType::Semicolon),
+            '*' => self.add_token(TokenType::Star),
             _ => {
                 self.identifier();
             }
@@ -49,7 +55,7 @@ impl<'a> Scanner<'a> {
         self.current += 1;
         c
     }
-    // 符号token
+    // single-character tokens
     pub fn add_token(&mut self, token_type: TokenType) {
         let text = &self.source[self.start..self.current];
         self.tokens
