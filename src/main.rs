@@ -2,6 +2,8 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 
+mod scanner;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -20,7 +22,12 @@ fn main() {
             });
 
             if !file_contents.is_empty() {
-                panic!("Scanner not implemented");
+                let mut s = scanner::Scanner::new(&file_contents);
+                s.scan_tokens();
+                let tokens = s.get_tokens();
+                for token in tokens {
+                    println!("{}", token.to_string());
+                }
             } else {
                 println!("EOF  null");
             }
