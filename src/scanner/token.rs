@@ -14,6 +14,14 @@ pub enum TokenType {
     Plus,
     Semicolon,
     Star,
+    Bang,
+    BangEqual,
+    Equal,
+    EqualEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
     Eof,
 }
 
@@ -30,6 +38,14 @@ impl ToString for TokenType {
             TokenType::Plus => "PLUS".to_string(),
             TokenType::Semicolon => "SEMICOLON".to_string(),
             TokenType::Star => "STAR".to_string(),
+            TokenType::Bang => "BANG".to_string(),
+            TokenType::BangEqual => "BANG_EQUAL".to_string(),
+            TokenType::Equal => "EQUAL".to_string(),
+            TokenType::EqualEqual => "EQUAL_EQUAL".to_string(),
+            TokenType::Greater => "GREATER".to_string(),
+            TokenType::GreaterEqual => "GREATER_EQUAL".to_string(),
+            TokenType::Less => "LESS".to_string(),
+            TokenType::LessEqual => "LESS_EQUAL".to_string(),
             TokenType::Eof => "EOF".to_string(),
         }
     }

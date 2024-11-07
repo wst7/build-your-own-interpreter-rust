@@ -47,6 +47,34 @@ impl<'a> Scanner<'a> {
             '+' => self.add_token(TokenType::Plus),
             ';' => self.add_token(TokenType::Semicolon),
             '*' => self.add_token(TokenType::Star),
+            '!' => {
+              if self.next_char_match('=') {
+                self.add_token(TokenType::BangEqual);
+              } else {
+                self.add_token(TokenType::Bang);
+              }
+            }
+            '=' => {
+              if self.next_char_match('=') {
+                self.add_token(TokenType::EqualEqual);
+              } else {
+                self.add_token(TokenType::Equal);
+              }
+            }
+            '<' => {
+              if self.next_char_match('=') {
+                self.add_token(TokenType::LessEqual);
+              } else {
+                self.add_token(TokenType::Less);
+              }
+            }
+            '>' => {
+              if self.next_char_match('=') {
+                self.add_token(TokenType::GreaterEqual);
+              } else {
+                self.add_token(TokenType::Greater);
+              }
+            }
             _ => {
                 self.errors.push(Error {
                     line: self.line,
@@ -71,5 +99,16 @@ impl<'a> Scanner<'a> {
 
     pub fn get_errors(&self) -> &Vec<Error> {
         &self.errors
+    }
+    pub fn next_char_match(&mut self, expected: char) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
+        let c = self.source.chars().nth(self.current).unwrap();
+        if c != expected {
+            return false;
+        }
+        self.current += 1;
+        true
     }
 }
