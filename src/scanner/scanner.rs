@@ -35,7 +35,10 @@ impl<'a> Scanner<'a> {
         (&self.tokens, &self.errors)
     }
     pub fn scan_token(&mut self) {
-        let c = self.advance();
+        let c = match self.advance() {
+            Some(c) => c,
+            None => return,
+        };
         match c {
             '(' => self.add_token(TokenType::LeftParen),
             ')' => self.add_token(TokenType::RightParen),
@@ -47,33 +50,45 @@ impl<'a> Scanner<'a> {
             '+' => self.add_token(TokenType::Plus),
             ';' => self.add_token(TokenType::Semicolon),
             '*' => self.add_token(TokenType::Star),
+            ' ' | '\r' | '\t' => (),
+            '\n' => self.line += 1,
+            '/' => {
+                // comment
+                if self.next_char_match('/') {
+                    while !self.is_at_end() && self.peek() != '\n' {
+                        self.advance();
+                    }
+                } else {
+                    self.add_token(TokenType::Slash);
+                }
+            }
             '!' => {
-              if self.next_char_match('=') {
-                self.add_token(TokenType::BangEqual);
-              } else {
-                self.add_token(TokenType::Bang);
-              }
+                if self.next_char_match('=') {
+                    self.add_token(TokenType::BangEqual);
+                } else {
+                    self.add_token(TokenType::Bang);
+                }
             }
             '=' => {
-              if self.next_char_match('=') {
-                self.add_token(TokenType::EqualEqual);
-              } else {
-                self.add_token(TokenType::Equal);
-              }
+                if self.next_char_match('=') {
+                    self.add_token(TokenType::EqualEqual);
+                } else {
+                    self.add_token(TokenType::Equal);
+                }
             }
             '<' => {
-              if self.next_char_match('=') {
-                self.add_token(TokenType::LessEqual);
-              } else {
-                self.add_token(TokenType::Less);
-              }
+                if self.next_char_match('=') {
+                    self.add_token(TokenType::LessEqual);
+                } else {
+                    self.add_token(TokenType::Less);
+                }
             }
             '>' => {
-              if self.next_char_match('=') {
-                self.add_token(TokenType::GreaterEqual);
-              } else {
-                self.add_token(TokenType::Greater);
-              }
+                if self.next_char_match('=') {
+                    self.add_token(TokenType::GreaterEqual);
+                } else {
+                    self.add_token(TokenType::Greater);
+                }
             }
             _ => {
                 self.errors.push(Error {
@@ -84,10 +99,9 @@ impl<'a> Scanner<'a> {
             }
         }
     }
-    pub fn advance(&mut self) -> char {
-        let c = self.source.chars().nth(self.current).unwrap();
+    pub fn advance(&mut self) -> Option<char> {
         self.current += 1;
-        c
+        self.source.chars().nth(self.current - 1)
     }
     // single-character tokens
     pub fn add_token(&mut self, token_type: TokenType) {
@@ -110,5 +124,15 @@ impl<'a> Scanner<'a> {
         }
         self.current += 1;
         true
+    }
+
+    pub fn peek(&self) -> char {
+        if self.is_at_end() {
+            return '\n';
+        }
+        match self.source.chars().nth(self.current) {
+            Some(c) => c,
+            None => '\n',
+        }
     }
 }
