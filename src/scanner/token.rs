@@ -3,6 +3,8 @@
 pub enum TokenType {
     LeftParen,
     RightParen,
+    LeftBrace,
+    RightBrace,
     Eof,
 }
 
@@ -11,6 +13,8 @@ impl ToString for TokenType {
         match self {
             TokenType::LeftParen => "LEFT_PAREN".to_string(),
             TokenType::RightParen => "RIGHT_PAREN".to_string(),
+            TokenType::LeftBrace => "LEFT_BRACE".to_string(),
+            TokenType::RightBrace => "RIGHT_BRACE".to_string(),
             TokenType::Eof => "EOF".to_string(),
         }
     }

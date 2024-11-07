@@ -19,43 +19,41 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn get_tokens(&self) -> &Vec<Token<'a>> {
-        &self.tokens
-    }
     // 是否到达了文件的结尾
     pub fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
-    pub fn scan_tokens(&mut self) {
-      while !self.is_at_end() {
-        self.start = self.current;
-        self.scan_token();
-      }
-      self.tokens.push(
-        Token::new(TokenType::Eof, "", None, self.line)
-      )
+    pub fn scan_tokens(&mut self) -> &Vec<Token<'a>> {
+        while !self.is_at_end() {
+            self.start = self.current;
+            self.scan_token();
+        }
+        self.tokens
+            .push(Token::new(TokenType::Eof, "", None, self.line));
+        &self.tokens
     }
     pub fn scan_token(&mut self) {
         let c = self.advance();
         match c {
             '(' => self.add_token(TokenType::LeftParen),
             ')' => self.add_token(TokenType::RightParen),
+            '{' => self.add_token(TokenType::LeftBrace),
+            '}' => self.add_token(TokenType::RightBrace),
             _ => {
-              self.identifier();
+                self.identifier();
             }
         }
     }
     pub fn advance(&mut self) -> char {
+        let c = self.source.chars().nth(self.current).unwrap();
         self.current += 1;
-        self.source.chars().nth(self.current - 1).unwrap()
+        c
     }
-
+    // 符号token
     pub fn add_token(&mut self, token_type: TokenType) {
         let text = &self.source[self.start..self.current];
         self.tokens
             .push(Token::new(token_type, text, None, self.line));
     }
-    pub fn identifier(&mut self) {
-      
-    }
+    pub fn identifier(&mut self) {}
 }

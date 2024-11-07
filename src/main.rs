@@ -23,8 +23,7 @@ fn main() {
 
             if !file_contents.is_empty() {
                 let mut s = scanner::Scanner::new(&file_contents);
-                s.scan_tokens();
-                let tokens = s.get_tokens();
+                let tokens = s.scan_tokens();
                 for token in tokens {
                     println!("{}", token.to_string());
                 }
