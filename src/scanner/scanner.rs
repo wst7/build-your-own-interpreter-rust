@@ -107,7 +107,6 @@ impl<'a> Scanner<'a> {
                     line: self.line,
                     message: format!("Unexpected character: {}", c),
                 });
-                // self.identifier();
             }
         }
     }

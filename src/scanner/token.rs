@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Display};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum TokenType {
   // Single-character tokens
     LeftParen,
