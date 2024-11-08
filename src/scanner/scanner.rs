@@ -128,7 +128,7 @@ impl<'a> Scanner<'a> {
       if let Some(token_type) = keyword {
           self.add_token(*token_type, Some(text.to_string()));
       } else {
-          self.add_token(TokenType::Identifier, Some(text.to_string()));
+          self.add_token(TokenType::Identifier, None);
       }
     }
 
