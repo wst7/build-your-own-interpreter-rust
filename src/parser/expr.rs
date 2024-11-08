@@ -4,6 +4,7 @@ pub enum Expr {
   Bool(bool),
   Nil,
   Number(String),
+  String(String),
 }
 
 impl Display for Expr {
@@ -12,6 +13,7 @@ impl Display for Expr {
             Expr::Bool(b) => write!(f, "{}", b),
             Expr::Nil => write!(f, "nil"),
             Expr::Number(n) => write!(f, "{}", n),
+            Expr::String(s) => write!(f, "{}", s),
         }
     }
 }
