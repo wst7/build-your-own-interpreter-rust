@@ -21,20 +21,26 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    pub fn scan_tokens(&mut self) -> (&Vec<Token<'a>>, &Vec<Error>) {
+      while !self.is_at_end() {
+          self.start = self.current;
+          self.scan_token();
+      }
+      self.tokens
+          .push(Token::new(TokenType::Eof, "", None, self.line));
+      (&self.tokens, &self.errors)
+  }
+
+  pub fn get_errors(&self) -> &Vec<Error> {
+    &self.errors
+}
+
     // 是否到达了文件的结尾
-    pub fn is_at_end(&self) -> bool {
+    fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
-    pub fn scan_tokens(&mut self) -> (&Vec<Token<'a>>, &Vec<Error>) {
-        while !self.is_at_end() {
-            self.start = self.current;
-            self.scan_token();
-        }
-        self.tokens
-            .push(Token::new(TokenType::Eof, "", None, self.line));
-        (&self.tokens, &self.errors)
-    }
-    pub fn scan_token(&mut self) {
+    
+    fn scan_token(&mut self) {
         let c = match self.advance() {
             Some(c) => c,
             None => return,
@@ -90,6 +96,7 @@ impl<'a> Scanner<'a> {
                     self.add_token(TokenType::Greater);
                 }
             }
+            '"' => self.string(),
             _ => {
                 self.errors.push(Error {
                     line: self.line,
@@ -99,7 +106,7 @@ impl<'a> Scanner<'a> {
             }
         }
     }
-    pub fn advance(&mut self) -> Option<char> {
+    fn advance(&mut self) -> Option<char> {
         self.current += 1;
         self.source.chars().nth(self.current - 1)
     }
@@ -109,12 +116,17 @@ impl<'a> Scanner<'a> {
         self.tokens
             .push(Token::new(token_type, text, None, self.line));
     }
-    pub fn identifier(&mut self) {}
-
-    pub fn get_errors(&self) -> &Vec<Error> {
-        &self.errors
+    fn add_token_literal(&mut self, token_type: TokenType) {
+        let text = &self.source[self.start..self.current];
+        let literal = &self.source[self.start + 1..self.current - 1];
+        self.tokens
+            .push(Token::new(token_type, text, Some(literal), self.line));
+      
     }
-    pub fn next_char_match(&mut self, expected: char) -> bool {
+    fn identifier(&mut self) {}
+
+    
+    fn next_char_match(&mut self, expected: char) -> bool {
         if self.is_at_end() {
             return false;
         }
@@ -126,7 +138,7 @@ impl<'a> Scanner<'a> {
         true
     }
 
-    pub fn peek(&self) -> char {
+    fn peek(&self) -> char {
         if self.is_at_end() {
             return '\n';
         }
@@ -134,5 +146,23 @@ impl<'a> Scanner<'a> {
             Some(c) => c,
             None => '\n',
         }
+    }
+    fn string(&mut self) {
+      while self.peek() != '"' && !self.is_at_end() {
+        if self.peek() == '\n' {
+          self.line += 1;
+        }
+        self.advance();
+      }
+      if self.is_at_end() {
+        self.errors.push(Error {
+          line: self.line,
+          message: "Unterminated string.".to_string(),
+        });
+        return;
+      }
+      // peek 探查到下一个字符是 "
+      self.advance();
+      self.add_token_literal(TokenType::String);
     }
 }
