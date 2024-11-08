@@ -1,4 +1,7 @@
-use super::{keywords, token::{Error, Token, TokenType}};
+use super::{
+    keywords,
+    token::{Error, Token, TokenType},
+};
 
 pub struct Scanner<'a> {
     source: &'a str,
@@ -120,16 +123,21 @@ impl<'a> Scanner<'a> {
     }
 
     fn identifier(&mut self) {
-      while self.peek().is_alphanumeric() {
-          self.advance();
-      }
-      let text = &self.source[self.start..self.current];
-      let keyword = keywords::map().get(text);
-      if let Some(token_type) = keyword {
-          self.add_token(*token_type, Some(text.to_string()));
-      } else {
-          self.add_token(TokenType::Identifier, None);
-      }
+        loop {
+            let c = self.peek();
+            if c.is_alphanumeric() || c == '_' {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        let text = &self.source[self.start..self.current];
+        let keyword = keywords::map().get(text);
+        if let Some(token_type) = keyword {
+            self.add_token(*token_type, Some(text.to_string()));
+        } else {
+            self.add_token(TokenType::Identifier, None);
+        }
     }
 
     fn next_char_match(&mut self, expected: char) -> bool {
