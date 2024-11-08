@@ -134,7 +134,7 @@ impl<'a> Scanner<'a> {
         let text = &self.source[self.start..self.current];
         let keyword = keywords::map().get(text);
         if let Some(token_type) = keyword {
-            self.add_token(*token_type, Some(text.to_string()));
+            self.add_token(*token_type, None);
         } else {
             self.add_token(TokenType::Identifier, None);
         }
@@ -203,13 +203,14 @@ impl<'a> Scanner<'a> {
             }
         }
         let literal = &self.source[self.start..self.current];
-        let float = literal.parse::<f64>().unwrap();
+        let float = literal
+            .parse::<f64>()
+            .expect("Number token should be parsed into float");
+        let mut value = float.to_string();
+        if !value.contains(".") {
+            value.push_str(".0");
+        }
 
-        let formatted = if float.fract() == 0.0 {
-            format!("{}.0", float)
-        } else {
-            String::from(literal)
-        };
-        self.add_token(TokenType::Number, Some(formatted));
+        self.add_token(TokenType::Number, Some(value));
     }
 }
