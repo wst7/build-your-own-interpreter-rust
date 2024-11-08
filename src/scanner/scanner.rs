@@ -1,4 +1,4 @@
-use super::token::{Error, Token, TokenType};
+use super::{keywords, token::{Error, Token, TokenType}};
 
 pub struct Scanner<'a> {
     source: &'a str,
@@ -22,40 +22,40 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn scan_tokens(&mut self) -> (&Vec<Token<'a>>, &Vec<Error>) {
-      while !self.is_at_end() {
-          self.start = self.current;
-          self.scan_token();
-      }
-      self.tokens
-          .push(Token::new(TokenType::Eof, "", None, self.line));
-      (&self.tokens, &self.errors)
-  }
+        while !self.is_at_end() {
+            self.start = self.current;
+            self.scan_token();
+        }
+        self.tokens
+            .push(Token::new(TokenType::Eof, "", None, self.line));
+        (&self.tokens, &self.errors)
+    }
 
-  pub fn get_errors(&self) -> &Vec<Error> {
-    &self.errors
-}
+    pub fn get_errors(&self) -> &Vec<Error> {
+        &self.errors
+    }
 
     // 是否到达了文件的结尾
     fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
-    
+
     fn scan_token(&mut self) {
         let c = match self.advance() {
             Some(c) => c,
             None => return,
         };
         match c {
-            '(' => self.add_token(TokenType::LeftParen),
-            ')' => self.add_token(TokenType::RightParen),
-            '{' => self.add_token(TokenType::LeftBrace),
-            '}' => self.add_token(TokenType::RightBrace),
-            ',' => self.add_token(TokenType::Comma),
-            '.' => self.add_token(TokenType::Dot),
-            '-' => self.add_token(TokenType::Minus),
-            '+' => self.add_token(TokenType::Plus),
-            ';' => self.add_token(TokenType::Semicolon),
-            '*' => self.add_token(TokenType::Star),
+            '(' => self.add_token(TokenType::LeftParen, None),
+            ')' => self.add_token(TokenType::RightParen, None),
+            '{' => self.add_token(TokenType::LeftBrace, None),
+            '}' => self.add_token(TokenType::RightBrace, None),
+            ',' => self.add_token(TokenType::Comma, None),
+            '.' => self.add_token(TokenType::Dot, None),
+            '-' => self.add_token(TokenType::Minus, None),
+            '+' => self.add_token(TokenType::Plus, None),
+            ';' => self.add_token(TokenType::Semicolon, None),
+            '*' => self.add_token(TokenType::Star, None),
             ' ' | '\r' | '\t' => (),
             '\n' => self.line += 1,
             '/' => {
@@ -65,38 +65,40 @@ impl<'a> Scanner<'a> {
                         self.advance();
                     }
                 } else {
-                    self.add_token(TokenType::Slash);
+                    self.add_token(TokenType::Slash, None);
                 }
             }
             '!' => {
                 if self.next_char_match('=') {
-                    self.add_token(TokenType::BangEqual);
+                    self.add_token(TokenType::BangEqual, None);
                 } else {
-                    self.add_token(TokenType::Bang);
+                    self.add_token(TokenType::Bang, None);
                 }
             }
             '=' => {
                 if self.next_char_match('=') {
-                    self.add_token(TokenType::EqualEqual);
+                    self.add_token(TokenType::EqualEqual, None);
                 } else {
-                    self.add_token(TokenType::Equal);
+                    self.add_token(TokenType::Equal, None);
                 }
             }
             '<' => {
                 if self.next_char_match('=') {
-                    self.add_token(TokenType::LessEqual);
+                    self.add_token(TokenType::LessEqual, None);
                 } else {
-                    self.add_token(TokenType::Less);
+                    self.add_token(TokenType::Less, None);
                 }
             }
             '>' => {
                 if self.next_char_match('=') {
-                    self.add_token(TokenType::GreaterEqual);
+                    self.add_token(TokenType::GreaterEqual, None);
                 } else {
-                    self.add_token(TokenType::Greater);
+                    self.add_token(TokenType::Greater, None);
                 }
             }
             '"' => self.string(),
+            '0'..='9' => self.number(),
+            c if c.is_alphabetic() || c == '_' => self.identifier(),
             _ => {
                 self.errors.push(Error {
                     line: self.line,
@@ -111,21 +113,25 @@ impl<'a> Scanner<'a> {
         self.source.chars().nth(self.current - 1)
     }
     // single-character tokens
-    pub fn add_token(&mut self, token_type: TokenType) {
+    pub fn add_token(&mut self, token_type: TokenType, literal: Option<String>) {
         let text = &self.source[self.start..self.current];
         self.tokens
-            .push(Token::new(token_type, text, None, self.line));
+            .push(Token::new(token_type, text, literal, self.line));
     }
-    fn add_token_literal(&mut self, token_type: TokenType) {
-        let text = &self.source[self.start..self.current];
-        let literal = &self.source[self.start + 1..self.current - 1];
-        self.tokens
-            .push(Token::new(token_type, text, Some(literal), self.line));
-      
-    }
-    fn identifier(&mut self) {}
 
-    
+    fn identifier(&mut self) {
+      while self.peek().is_alphanumeric() {
+          self.advance();
+      }
+      let text = &self.source[self.start..self.current];
+      let keyword = keywords::map().get(text);
+      if let Some(token_type) = keyword {
+          self.add_token(*token_type, Some(text.to_string()));
+      } else {
+          self.add_token(TokenType::Identifier, Some(text.to_string()));
+      }
+    }
+
     fn next_char_match(&mut self, expected: char) -> bool {
         if self.is_at_end() {
             return false;
@@ -147,22 +153,55 @@ impl<'a> Scanner<'a> {
             None => '\n',
         }
     }
-    fn string(&mut self) {
-      while self.peek() != '"' && !self.is_at_end() {
-        if self.peek() == '\n' {
-          self.line += 1;
+    fn peek_next(&self) -> char {
+        if self.current + 1 >= self.source.len() {
+            return '\n';
         }
+        match self.source.chars().nth(self.current + 1) {
+            Some(c) => c,
+            None => '\n',
+        }
+    }
+    fn string(&mut self) {
+        while self.peek() != '"' && !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+        if self.is_at_end() {
+            self.errors.push(Error {
+                line: self.line,
+                message: "Unterminated string.".to_string(),
+            });
+            return;
+        }
+        // peek 探查到下一个字符是 "
         self.advance();
-      }
-      if self.is_at_end() {
-        self.errors.push(Error {
-          line: self.line,
-          message: "Unterminated string.".to_string(),
-        });
-        return;
-      }
-      // peek 探查到下一个字符是 "
-      self.advance();
-      self.add_token_literal(TokenType::String);
+        let literal = &self.source[self.start + 1..self.current - 1];
+        self.add_token(TokenType::String, Some(String::from(literal)));
+    }
+
+    fn number(&mut self) {
+        while self.peek().is_digit(10) {
+            self.advance();
+        }
+        if self.peek() == '.' && self.peek_next().is_digit(10) {
+            // Consume the "."
+            self.advance();
+
+            while self.peek().is_digit(10) {
+                self.advance();
+            }
+        }
+        let literal = &self.source[self.start..self.current];
+        let float = literal.parse::<f64>().unwrap();
+
+        let formatted = if float.fract() == 0.0 {
+            format!("{}.0", float)
+        } else {
+            String::from(literal)
+        };
+        self.add_token(TokenType::Number, Some(formatted));
     }
 }

@@ -2,6 +2,7 @@
 
 use std::fmt::{self, Display};
 
+#[derive(Clone, Copy)]
 pub enum TokenType {
   // Single-character tokens
     LeftParen,
@@ -15,6 +16,7 @@ pub enum TokenType {
     Semicolon,
     Star,
     Slash,
+    // One or two character tokens
     Bang,
     BangEqual,
     Equal,
@@ -23,7 +25,28 @@ pub enum TokenType {
     GreaterEqual,
     Less,
     LessEqual,
+    // Literals
     String,
+    Number,
+    Identifier,
+    // Keywords
+    And,
+    Class,
+    Else,
+    False,
+    Fun,
+    For,
+    If,
+    Nil,
+    Or,
+    Print,
+    Return,
+    Super,
+    This,
+    True,
+    Var,
+    While,
+    // End of file
     Eof,
 }
 
@@ -50,6 +73,24 @@ impl ToString for TokenType {
             TokenType::Less => "LESS".to_string(),
             TokenType::LessEqual => "LESS_EQUAL".to_string(),
             TokenType::String => "STRING".to_string(),
+            TokenType::Number => "NUMBER".to_string(),
+            TokenType::Identifier => "IDENTIFIER".to_string(),
+            TokenType::And => "AND".to_string(),
+            TokenType::Class => "CLASS".to_string(),
+            TokenType::Else => "ELSE".to_string(),
+            TokenType::False => "FALSE".to_string(),
+            TokenType::Fun => "FUN".to_string(),
+            TokenType::For => "FOR".to_string(),
+            TokenType::If => "IF".to_string(),
+            TokenType::Nil => "NIL".to_string(),
+            TokenType::Or => "OR".to_string(),
+            TokenType::Print => "PRINT".to_string(),
+            TokenType::Return => "RETURN".to_string(),
+            TokenType::Super => "SUPER".to_string(),
+            TokenType::This => "THIS".to_string(),
+            TokenType::True => "TRUE".to_string(),
+            TokenType::Var => "VAR".to_string(),
+            TokenType::While => "WHILE".to_string(),
             TokenType::Eof => "EOF".to_string(),
         }
     }
@@ -58,7 +99,7 @@ impl ToString for TokenType {
 pub struct Token<'a> {
     pub token_type: TokenType,
     pub lexeme: &'a str,
-    pub literal: Option<&'a str>,
+    pub literal: Option<String>,
     pub line: usize,
 }
 
@@ -66,7 +107,7 @@ impl<'a> Token<'a> {
     pub fn new(
         token_type: TokenType,
         lexeme: &'a str,
-        literal: Option<&'a str>,
+        literal: Option<String>,
         line: usize,
     ) -> Token<'a> {
         Token {
@@ -84,7 +125,10 @@ impl ToString for Token<'_> {
             "{} {} {}",
             self.token_type.to_string(),
             self.lexeme,
-            self.literal.map_or("null", |x| x)
+            match self.literal {
+              Some(ref l) => l,
+              None => "null",
+          }
         )
     }
 }
