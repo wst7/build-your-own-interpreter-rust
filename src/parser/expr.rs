@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter};
 pub enum Expr {
   Bool(bool),
   Nil,
+  Number(String),
 }
 
 impl Display for Expr {
@@ -10,6 +11,7 @@ impl Display for Expr {
         match self {
             Expr::Bool(b) => write!(f, "{}", b),
             Expr::Nil => write!(f, "nil"),
+            Expr::Number(n) => write!(f, "{}", n),
         }
     }
 }

@@ -33,6 +33,7 @@ impl<'a> Parser<'a> {
             TokenType::True => Some(Expr::Bool(true)),
             TokenType::False => Some(Expr::Bool(false)),
             TokenType::Nil => Some(Expr::Nil),
+            TokenType::Number => Some(Expr::Number(token.literal.clone().unwrap())),
             _ => None,
         };
         match expr {
