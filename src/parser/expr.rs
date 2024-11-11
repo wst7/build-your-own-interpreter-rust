@@ -22,8 +22,8 @@ impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Expr::Literal(l) => write!(f, "{}", l),
-            Expr::Unary(op, e) => write!(f, "{} {}", op.lexeme, e),
-            Expr::Binary(l, op, r) => write!(f, "{} {l} {r}", op.lexeme),
+            Expr::Unary(op, e) => write!(f, "({} {e})", op.lexeme),
+            Expr::Binary(l, op, r) => write!(f, "({} {l} {r})", op.lexeme),
             Expr::Grouping(g) => write!(f, "(group {})", g),
         }
     }
@@ -44,3 +44,4 @@ impl Display for Literal {
         }
     }
 }
+
