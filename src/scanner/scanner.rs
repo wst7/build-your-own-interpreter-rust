@@ -34,9 +34,6 @@ impl<'a> Scanner<'a> {
         (&self.tokens, &self.errors)
     }
 
-    pub fn get_errors(&self) -> &Vec<Error> {
-        &self.errors
-    }
 
     // 是否到达了文件的结尾
     fn is_at_end(&self) -> bool {

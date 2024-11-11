@@ -44,4 +44,3 @@ impl Display for Literal {
         }
     }
 }
-

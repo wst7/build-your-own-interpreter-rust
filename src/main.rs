@@ -2,10 +2,10 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 
+
+mod evaluator;
 mod parser;
 mod scanner;
-mod evaluator;
-
 
 fn read_file_contents(filename: &str) -> String {
     fs::read_to_string(filename).unwrap_or_else(|_| {
@@ -72,7 +72,12 @@ fn main() {
                 }
             };
             let evaluator = evaluator::Evaluator::new(&ast);
-            let result = evaluator.evaluate();
+            let result = match evaluator.evaluate() {
+                Ok(result) => result,
+                Err(error) => {
+                    std::process::exit(65);
+                }
+            };
             println!("{}", result);
         }
         _ => {

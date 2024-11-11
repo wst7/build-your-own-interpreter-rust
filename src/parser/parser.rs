@@ -193,12 +193,21 @@ impl<'a> Parser<'a> {
 }
 
 // pub fn print_ast(expr: &Expr) -> String {
-//   match expr {
-//       Expr::Literal(l) => format!("{}", l),
-//       Expr::Unary(op, e) => format!("({} {})", op.lexeme, print_ast(e)),
-//       Expr::Binary(left, op, right) => {
-//           format!("({} {} {})", op.lexeme, print_ast(left), print_ast(right))
-//       }
-//       Expr::Grouping(g) => format!("(group {})", print_ast(g)),
-//   }
+//     match expr {
+//         Expr::Literal(l) => match l {
+//             Literal::Number(n) => {
+//                 let mut value = n.to_string();
+//                 if !value.contains(".") {
+//                     value.push_str(".0");
+//                 }
+//                 format!("{}", l)
+//             }
+//             _ => format!("{}", l),
+//         },
+//         Expr::Unary(op, e) => format!("({} {})", op.lexeme, print_ast(e)),
+//         Expr::Binary(left, op, right) => {
+//             format!("({} {} {})", op.lexeme, print_ast(left), print_ast(right))
+//         }
+//         Expr::Grouping(g) => format!("(group {})", print_ast(g)),
+//     }
 // }
