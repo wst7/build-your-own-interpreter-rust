@@ -75,7 +75,7 @@ fn main() {
             let result = match evaluator.evaluate() {
                 Ok(result) => result,
                 Err(error) => {
-                    std::process::exit(65);
+                    std::process::exit(70);
                 }
             };
             println!("{}", result);
