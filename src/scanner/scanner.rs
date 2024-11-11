@@ -5,7 +5,7 @@ use super::{
 
 pub struct Scanner<'a> {
     source: &'a str,
-    tokens: Vec<Token<'a>>,
+    tokens: Vec<Token>,
     start: usize,
     current: usize,
     line: usize,
@@ -24,13 +24,13 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn scan_tokens(&mut self) -> (&Vec<Token<'a>>, &Vec<Error>) {
+    pub fn scan_tokens(&mut self) -> (&Vec<Token>, &Vec<Error>) {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token();
         }
         self.tokens
-            .push(Token::new(TokenType::Eof, "", None, self.line));
+            .push(Token::new(TokenType::Eof, String::from(""), None, self.line));
         (&self.tokens, &self.errors)
     }
 
@@ -118,7 +118,7 @@ impl<'a> Scanner<'a> {
     pub fn add_token(&mut self, token_type: TokenType, literal: Option<String>) {
         let text = &self.source[self.start..self.current];
         self.tokens
-            .push(Token::new(token_type, text, literal, self.line));
+            .push(Token::new(token_type, String::from(text), literal, self.line));
     }
 
     fn identifier(&mut self) {

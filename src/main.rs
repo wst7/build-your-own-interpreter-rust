@@ -2,8 +2,8 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 
-mod scanner;
 mod parser;
+mod scanner;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -48,13 +48,14 @@ fn main() {
             if !errors.is_empty() {
                 std::process::exit(65);
             }
-            let exprs = match parser::Parser::new(tokens).parse() {
-                Some(exprs) => exprs,
-                None => Vec::new()
+            let mut parser = parser::Parser::new(tokens);
+            let expr = match parser.parse() {
+                Ok(expr) => expr,
+                Err(error) => {
+                    std::process::exit(65);
+                }
             };
-            for expr in exprs {
-                println!("{}", expr);
-            };
+            println!("{}", expr);
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();

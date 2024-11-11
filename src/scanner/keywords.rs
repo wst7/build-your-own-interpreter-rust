@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash, sync::OnceLock};
+use std::{collections::HashMap, sync::OnceLock};
 
 use super::token::TokenType;
 

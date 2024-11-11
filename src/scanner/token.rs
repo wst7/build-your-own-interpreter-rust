@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Display};
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
   // Single-character tokens
     LeftParen,
@@ -96,20 +96,21 @@ impl ToString for TokenType {
     }
 }
 
-pub struct Token<'a> {
+#[derive(Debug, Clone)]
+pub struct Token {
     pub token_type: TokenType,
-    pub lexeme: &'a str,
+    pub lexeme: String,
     pub literal: Option<String>,
     pub line: usize,
 }
 
-impl<'a> Token<'a> {
+impl Token {
     pub fn new(
         token_type: TokenType,
-        lexeme: &'a str,
+        lexeme: String,
         literal: Option<String>,
         line: usize,
-    ) -> Token<'a> {
+    ) -> Token {
         Token {
             token_type,
             lexeme,
@@ -119,7 +120,7 @@ impl<'a> Token<'a> {
     }
 }
 
-impl ToString for Token<'_> {
+impl ToString for Token {
     fn to_string(&self) -> String {
         format!(
             "{} {} {}",
