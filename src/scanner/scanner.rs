@@ -1,3 +1,5 @@
+use crate::parser::expr::Literal;
+
 use super::{
     keywords,
     token::{Error, Token, TokenType},
@@ -29,11 +31,14 @@ impl<'a> Scanner<'a> {
             self.start = self.current;
             self.scan_token();
         }
-        self.tokens
-            .push(Token::new(TokenType::Eof, String::from(""), None, self.line));
+        self.tokens.push(Token::new(
+            TokenType::Eof,
+            String::from(""),
+            None,
+            self.line,
+        ));
         (&self.tokens, &self.errors)
     }
-
 
     // 是否到达了文件的结尾
     fn is_at_end(&self) -> bool {
@@ -113,11 +118,20 @@ impl<'a> Scanner<'a> {
     }
     // single-character tokens
     pub fn add_token(&mut self, token_type: TokenType, literal: Option<String>) {
-        let text = &self.source[self.start..self.current];
-        self.tokens
-            .push(Token::new(token_type, String::from(text), literal, self.line));
+        // let text = &self.source[self.start..self.current];
+        let text = self
+            .source
+            .chars()
+            .skip(self.start)
+            .take(self.current - self.start)
+            .collect::<String>();
+        self.tokens.push(Token::new(
+            token_type,
+            String::from(text),
+            literal,
+            self.line,
+        ));
     }
-
     fn identifier(&mut self) {
         loop {
             let c = self.peek();
@@ -180,9 +194,17 @@ impl<'a> Scanner<'a> {
             });
             return;
         }
-        // peek 探查到下一个字符是 "
+        // 当探查到 `"` 字符时，结束字符串并调用 advance
         self.advance();
-        let literal = &self.source[self.start + 1..self.current - 1];
+        // let literal = &self.source[self.start + 1..self.current - 1];
+        // 字符串（str 类型）是 UTF-8 编码的，因此字符串的底层存储是字节数组
+        // 按字符切片，而不是字节切片，因为字符串可能包含非 ASCII 字符
+        let literal = &self
+            .source
+            .chars()
+            .skip(self.start + 1)
+            .take(self.current - self.start - 2)
+            .collect::<String>();
         self.add_token(TokenType::String, Some(String::from(literal)));
     }
 

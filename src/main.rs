@@ -86,7 +86,7 @@ fn main() {
             let file_contents = read_file_contents(&filename);
             let mut s = scanner::Scanner::new(&file_contents);
             let (tokens, errors) = s.scan_tokens();
-           
+
             let mut parser = parser::Parser::new(tokens);
             let stmts = match parser.parse() {
                 Ok(expr) => expr,

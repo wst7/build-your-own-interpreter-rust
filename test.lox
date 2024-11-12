@@ -1,1 +1,1 @@
-"hello" != "baz"
+print "non-ascii: ॐ"
