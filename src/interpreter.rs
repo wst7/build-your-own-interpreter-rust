@@ -45,13 +45,13 @@ impl Display for Value {
     }
 }
 pub struct Interpreter {
-    env: Environment,
+    env: Box<Environment>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Self {
-            env: Environment::new(None),
+            env: Box::new(Environment::new(None)),
         }
     }
     pub fn interpret(&mut self, stmts: Vec<Stmt>) -> Result<(), RuntimeError> {
@@ -89,12 +89,12 @@ impl Interpreter {
         }
     }
     fn execute_block(&mut self, stmts: &Vec<Stmt>) -> Result<(), RuntimeError> {
-        let previous = self.env.clone();
-        self.env = Environment::new(Some(self.env.clone()));
+        // let previous = self.env.clone();
+        self.env = Box::new(Environment::new(Some(self.env.as_ref().clone())));
         for stmt in stmts {
             self.execute(stmt)?;
         }
-        self.env = previous;
+        self.env = self.env.get_enclosing();
         Ok(())
     }
     // 计算表达式

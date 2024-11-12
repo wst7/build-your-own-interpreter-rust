@@ -1,6 +1,13 @@
 {
- var baz = 69;
- var hello = 69;
- {
-  print baz + hello;
+   var quz = "outer quz";
+   var foo = "outer foo";
+   {
+     quz = "modified quz";
+     var foo = "inner foo";
+     print quz;
+     print foo;
+   }
+   print quz;
+   print foo;
  }
+ print foo;
