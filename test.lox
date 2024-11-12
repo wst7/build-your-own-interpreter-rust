@@ -1,4 +1,2 @@
-(82 + 71 - 36) > (97 - 82) * 2;
-[tester::#FI3] [test-1] [test.lox] print !false;
-[tester::#FI3] [test-1] [test.lox] "world" + "baz" + "quz" + "bar" == "worldbazquzbar";
-[tester::#FI3] [test-1] [test.lox] print !false;
+var foo = 10;
+print foo;

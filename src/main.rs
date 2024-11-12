@@ -2,7 +2,7 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 
-mod evaluator;
+mod interpreter;
 mod parser;
 mod scanner;
 mod environment;
@@ -73,7 +73,8 @@ fn main() {
                     std::process::exit(65);
                 }
             };
-            let value = match evaluator::evaluate_expr(&ast){
+            let interpreter = interpreter::Interpreter::new();
+            let value = match interpreter.evaluate(&ast) {
                 Ok(result) => result,
                 Err(error) => {
                     eprintln!("{}", error);
@@ -95,15 +96,14 @@ fn main() {
                     std::process::exit(65);
                 }
             };
-            for stmt in stmts {
-                let _ = match evaluator::evaluate_stmt(&stmt) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        eprintln!("{}", err);
-                        std::process::exit(70);
-                    }
-                };
-            }
+            let mut interpreter = interpreter::Interpreter::new();
+            let _ = match interpreter.interpret(stmts) {
+                Ok(result) => result,
+                Err(error) => {
+                    eprintln!("{}", error);
+                    std::process::exit(70);
+                }
+            };
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
