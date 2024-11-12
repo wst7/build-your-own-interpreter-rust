@@ -51,7 +51,7 @@ pub fn evaluate_stmt(stmt: &Stmt) -> Result<(), RuntimeError> {
         }
         Stmt::Expression(expr) => {
             let value = evaluate_expr(expr)?;
-            println!("{}", value);
+            // println!("{}", value);
             Ok(())
         }
         _ => Err(RuntimeError::new("Not implemented".to_string(), 0)),
