@@ -73,7 +73,7 @@ fn main() {
                     std::process::exit(65);
                 }
             };
-            let interpreter = interpreter::Interpreter::new();
+            let mut interpreter = interpreter::Interpreter::new();
             let value = match interpreter.evaluate(&ast) {
                 Ok(result) => result,
                 Err(error) => {

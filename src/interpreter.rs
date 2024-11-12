@@ -85,7 +85,7 @@ impl Interpreter {
         }
     }
     // 计算表达式
-    pub fn evaluate(&self, expr: &Expr) -> Result<Value, RuntimeError> {
+    pub fn evaluate(&mut self, expr: &Expr) -> Result<Value, RuntimeError> {
         match expr {
             Expr::Literal(lit) => {
                 let val = match lit {
@@ -196,7 +196,12 @@ impl Interpreter {
             }
             Expr::Variable(name) => {
               Ok(self.env.get(name)?.clone().unwrap())
-            } 
+            }
+            Expr::Assign(name, expr) => {
+              let value = self.evaluate(expr)?;
+              self.env.assign(name, Some(value.clone()))?;
+              Ok(value)
+            }
             _ => {
               panic!("Not implemented")
             },

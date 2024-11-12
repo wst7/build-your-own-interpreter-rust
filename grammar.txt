@@ -1,3 +1,5 @@
+parse token to  ast
+
 program        → declaration* EOF ;
 declaration    → classDecl | funcDecl | varDecl | statement ;
 classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}" ;

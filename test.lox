@@ -1,2 +1,1 @@
-var foo = 10;
-print foo;
+print a;
