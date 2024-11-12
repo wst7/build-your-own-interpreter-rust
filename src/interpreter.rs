@@ -51,7 +51,7 @@ pub struct Interpreter {
 impl Interpreter {
     pub fn new() -> Self {
         Self {
-            env: Environment::new(),
+            env: Environment::new(None),
         }
     }
     pub fn interpret(&mut self, stmts: Vec<Stmt>) -> Result<(), RuntimeError> {
@@ -81,8 +81,21 @@ impl Interpreter {
                 self.env.define(name.lexeme.clone(), Some(val));
                 Ok(())
             }
+            Stmt::Block(stmts) => {
+                self.execute_block(stmts)?;
+                Ok(())
+            }
             _ => Err(RuntimeError::new("Not implemented".to_string(), 0)),
         }
+    }
+    fn execute_block(&mut self, stmts: &Vec<Stmt>) -> Result<(), RuntimeError> {
+        let previous = self.env.clone();
+        self.env = Environment::new(Some(self.env.clone()));
+        for stmt in stmts {
+            self.execute(stmt)?;
+        }
+        self.env = previous;
+        Ok(())
     }
     // 计算表达式
     pub fn evaluate(&mut self, expr: &Expr) -> Result<Value, RuntimeError> {

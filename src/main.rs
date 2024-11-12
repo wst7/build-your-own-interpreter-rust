@@ -96,6 +96,7 @@ fn main() {
                     std::process::exit(65);
                 }
             };
+            // println!("{:#?}", stmts);
             let mut interpreter = interpreter::Interpreter::new();
             let _ = match interpreter.interpret(stmts) {
                 Ok(result) => result,

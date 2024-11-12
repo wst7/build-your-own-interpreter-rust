@@ -48,12 +48,23 @@ impl<'a> Parser<'a> {
         if self.matches(&[TokenType::Print]) {
             return self.print_statement();
         }
+        if self.matches(&[TokenType::LeftBrace]) {
+            return Ok(Stmt::Block(self.block()?));
+        }
         self.expression_stmt()
     }
     fn print_statement(&mut self) -> Result<Stmt, ParseError> {
         let value = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
         Ok(Stmt::Print(value))
+    }
+    fn block(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        let mut statements = Vec::new();
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            statements.push(self.declaration()?);
+        }
+        self.consume(TokenType::RightBrace, "Expect '}' after block.")?;
+        Ok(statements)
     }
     fn expression_stmt(&mut self) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
@@ -156,6 +167,17 @@ impl<'a> Parser<'a> {
     // primary        → NUMBER | STRING | "true" | "false" | "nil"
     //                | "(" expression ")" ;
     fn primary(&mut self) -> Result<Expr, ParseError> {
+        if self.matches(&[TokenType::LeftParen]) {
+            let expr = self.expression()?;
+            self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
+            return Ok(Expr::Grouping(Box::new(expr)));
+        } else if self.matches(&[TokenType::Identifier]) {
+            return Ok(Expr::Variable(self.previous().clone()));
+        } else {
+            self.literal()
+        }
+    }
+    fn literal(&mut self) -> Result<Expr, ParseError> {
         if self.matches(&[
             TokenType::False,
             TokenType::True,
@@ -167,17 +189,9 @@ impl<'a> Parser<'a> {
                 self.convert_token_literal(self.previous().clone())?,
             ));
         }
-        if self.matches(&[TokenType::Identifier]) {
-            return Ok(Expr::Variable(self.previous().clone()));
-        }
-        if self.matches(&[TokenType::LeftParen]) {
-            let expr = self.expression()?;
-            self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
-            return Ok(Expr::Grouping(Box::new(expr)));
-        }
+        // println!("literal {:?}", self.peek());
         Err(ParseError::new("Expect expression.", self.peek().line))
     }
-
     // *******辅助方法************
     fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token, ParseError> {
         if self.check(token_type.clone()) {
@@ -212,7 +226,7 @@ impl<'a> Parser<'a> {
         &self.tokens[self.current - 1]
     }
     fn is_at_end(&self) -> bool {
-       self.peek().token_type == TokenType::Eof
+        self.peek().token_type == TokenType::Eof
     }
     fn peek(&self) -> &Token {
         &self.tokens[self.current]

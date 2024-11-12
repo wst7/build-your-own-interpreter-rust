@@ -1,1 +1,6 @@
-print a;
+{
+ var baz = 69;
+ var hello = 69;
+ {
+  print baz + hello;
+ }
