@@ -16,6 +16,9 @@ pub enum Expr {
     Unary(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),
+    Variable(Token),
+    Assign(Token, Box<Expr>),
+    Logical(Box<Expr>, Token, Box<Expr>),
 }
 
 impl Display for Expr {
@@ -25,6 +28,9 @@ impl Display for Expr {
             Expr::Unary(op, e) => write!(f, "({} {e})", op.lexeme),
             Expr::Binary(l, op, r) => write!(f, "({} {l} {r})", op.lexeme),
             Expr::Grouping(g) => write!(f, "(group {})", g),
+            Expr::Variable(t) => write!(f, "{}", t.lexeme),
+            Expr::Assign(t, e) => write!(f, "({} = {e})", t.lexeme),
+            Expr::Logical(l, op, r) => write!(f, "({} {l} {r})", op.lexeme),
         }
     }
 }

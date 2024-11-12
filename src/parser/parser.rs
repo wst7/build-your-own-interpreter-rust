@@ -1,31 +1,10 @@
-// Lox expression grammar
-// expression     → literal
-//                | unary
-//                | binary
-//                | grouping ;
-
-// literal        → NUMBER | STRING | "true" | "false" | "nil" ;
-// grouping       → "(" expression ")" ;
-// unary          → ( "-" | "!" ) expression ;
-// binary         → expression operator expression ;
-// operator       → "==" | "!=" | "<" | "<=" | ">" | ">="
-//                | "+"  | "-"  | "*" | "/" ;
-
-// 优先级
-// expression     → equality ;
-// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-// term           → factor ( ( "-" | "+" ) factor )* ;
-// factor         → unary ( ( "/" | "*" ) unary )* ;
-// unary          → ( "!" | "-" ) unary
-//                | primary ;
-// primary        → NUMBER | STRING | "true" | "false" | "nil"
-//                | "(" expression ")" ;
+// Grammar in grammar.txt file
 use crate::scanner::token::{Token, TokenType};
 
 use super::{
     error::ParseError,
-    expr::{Expr, Literal},
+    expr::{self, Expr, Literal},
+    stmt::Stmt,
 };
 
 pub struct Parser<'a> {
@@ -37,13 +16,87 @@ impl<'a> Parser<'a> {
     pub fn new(tokens: &'a [Token]) -> Self {
         Self { tokens, current: 0 }
     }
-    pub fn parse(&mut self) -> Result<Expr, ParseError> {
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        let mut statements = Vec::new();
+        while !self.is_at_end() {
+            statements.push(self.declaration()?);
+        }
+        Ok(statements)
+    }
+    pub fn parse_expr(&mut self) -> Result<Expr, ParseError> {
         self.expression()
     }
+    fn declaration(&mut self) -> Result<Stmt, ParseError> {
+        if self.matches(&[TokenType::Var]) {
+            return self.var_declaration();
+        }
+        return self.statement();
+    }
+    fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
+        let name = self
+            .consume(TokenType::Identifier, "Expect variable name.")?
+            .clone();
+        let initializer = if self.matches(&[TokenType::Equal]) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
+        return Ok(Stmt::Var(name, initializer));
+    }
+    fn statement(&mut self) -> Result<Stmt, ParseError> {
+        if self.matches(&[TokenType::Print]) {
+            return self.print_statement();
+        }
+        self.expression_stmt()
+    }
+    fn print_statement(&mut self) -> Result<Stmt, ParseError> {
+        let value = self.expression()?;
+        self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
+        Ok(Stmt::Print(value))
+    }
+    fn expression_stmt(&mut self) -> Result<Stmt, ParseError> {
+        let expr = self.expression()?;
+        if !self.is_at_end() {
+            self.consume(TokenType::Semicolon, "Expect ';' after expression.")?;
+        }
+        Ok(Stmt::Expression(expr))
+    }
     // *******解析器处理表达式时，优先从低优先级的运算符解析到高优先级的运算符************
-    // expression     → equality ;
+    // expression     → assignment ;
     fn expression(&mut self) -> Result<Expr, ParseError> {
-        self.equality()
+        self.assignment()
+    }
+    // assignment     → IDENTIFIER "=" assignment | anonFunc | logic_or ;
+    fn assignment(&mut self) -> Result<Expr, ParseError> {
+        let expr = self.or()?;
+        if self.matches(&[TokenType::Equal]) {
+            let equals = self.previous().clone();
+            let value = self.assignment()?;
+            if let Expr::Variable(name) = expr {
+                return Ok(Expr::Assign(name, Box::new(value)));
+            }
+            return Err(ParseError::new("Invalid assignment target.", equals.line));
+        }
+        Ok(expr)
+    }
+    fn or(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.and()?;
+        while self.matches(&[TokenType::Or]) {
+            let operator = self.previous().clone();
+            let right = self.and()?;
+            expr = Expr::Logical(Box::new(expr), operator, Box::new(right))
+        }
+        Ok(expr)
+    }
+    fn and(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.equality()?;
+        while self.matches(&[TokenType::And]) {
+            let operator = self.previous().clone();
+            let right = self.equality()?;
+            expr = Expr::Logical(Box::new(expr), operator, Box::new(right))
+        }
+        Ok(expr)
     }
     // equality       → comparison ( ( "!=" | "==" ) comparison )* ;
     fn equality(&mut self) -> Result<Expr, ParseError> {
@@ -114,7 +167,9 @@ impl<'a> Parser<'a> {
                 self.convert_token_literal(self.previous().clone())?,
             ));
         }
-
+        if self.matches(&[TokenType::Identifier]) {
+            return Ok(Expr::Variable(self.previous().clone()));
+        }
         if self.matches(&[TokenType::LeftParen]) {
             let expr = self.expression()?;
             self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
@@ -124,10 +179,9 @@ impl<'a> Parser<'a> {
     }
 
     // *******辅助方法************
-    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<(), ParseError> {
+    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token, ParseError> {
         if self.check(token_type.clone()) {
-            self.advance();
-            return Ok(());
+            return Ok(self.advance());
         }
         return Err(ParseError::new(message, self.peek().line));
     }
@@ -158,7 +212,7 @@ impl<'a> Parser<'a> {
         &self.tokens[self.current - 1]
     }
     fn is_at_end(&self) -> bool {
-        self.current >= self.tokens.len()
+       self.peek().token_type == TokenType::Eof
     }
     fn peek(&self) -> &Token {
         &self.tokens[self.current]

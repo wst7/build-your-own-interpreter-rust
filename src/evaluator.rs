@@ -1,7 +1,10 @@
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 
 use crate::{
-    parser::expr::{Expr, Literal},
+    parser::{
+        expr::{Expr, Literal},
+        stmt::Stmt,
+    },
     scanner::token::TokenType,
 };
 
@@ -13,6 +16,12 @@ pub struct RuntimeError {
 impl RuntimeError {
     pub fn new(message: String, line: usize) -> Self {
         Self { message, line }
+    }
+}
+
+impl Display for RuntimeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f, "[line {}] Error: {}", self.line, self.message)
     }
 }
 
@@ -33,130 +42,133 @@ impl Display for Value {
         }
     }
 }
-
-pub struct Evaluator<'a> {
-    ast: &'a Expr,
-}
-
-impl<'a> Evaluator<'a> {
-    pub fn new(ast: &'a Expr) -> Self {
-        Self { ast }
-    }
-    pub fn evaluate(&self) -> Result<Value, RuntimeError> {
-        self.evaluate_expr(self.ast)
-    }
-    fn evaluate_expr(&self, expr: &Expr) -> Result<Value, RuntimeError> {
-        match expr{
-            Expr::Literal(lit) => {
-                let val = match lit {
-                    Literal::Number(n) => Value::Number(*n),
-                    Literal::String(s) => Value::String(s.to_string()),
-                    Literal::Bool(b) => Value::Bool(*b),
-                    Literal::Nil => Value::Nil,
-                };
-                Ok(val)
-            }
-            Expr::Grouping(expr) => self.evaluate_expr(expr),
-            Expr::Unary(op, expr) => {
-                let right = self.evaluate_expr(expr)?;
-                match op.token_type {
-                    TokenType::Minus => {
-                        if let Value::Number(n) = right {
-                            Ok(Value::Number(-n))
-                        } else {
-                            Err(RuntimeError::new(
-                                "Invalid operand for unary operator".to_string(),
-                                op.line,
-                            ))
-                        }
-                    }
-                    TokenType::Bang => Ok(Value::Bool(!self.is_truthy(&right))),
-                    _ => Ok(Value::String("Not implemented".to_string())),
-                }
-            }
-            Expr::Binary(left, op, right) => {
-                let left = self.evaluate_expr(left)?;
-
-                let right = self.evaluate_expr(right)?;
-                match op.token_type {
-                    TokenType::Plus => {
-                        if is_number(&left) && is_number(&right) {
-                            Ok(Value::Number(get_number(&left) + get_number(&right)))
-                        } else if is_string(&left) && is_string(&right) {
-                            Ok(Value::String(format!(
-                                "{}{}",
-                                get_string(&left),
-                                get_string(&right)
-                            )))
-                        } else {
-                            Err(RuntimeError::new(
-                                "Operands must be two numbers or two strings.".to_string(),
-                                op.line,
-                            ))
-                        }
-                    }
-                    TokenType::Minus => {
-                        if is_number(&left) && is_number(&right) {
-                            Ok(Value::Number(get_number(&left) - get_number(&right)))
-                        } else {
-                            Err(RuntimeError::new(
-                                "Operands must be numbers.".to_string(),
-                                op.line,
-                            ))
-                        }
-                    }
-                    TokenType::Star => {
-                        if is_number(&left) && is_number(&right) {
-                            Ok(Value::Number(get_number(&left) * get_number(&right)))
-                        } else {
-                            Err(RuntimeError::new(
-                                "Operands must be numbers.".to_string(),
-                                op.line,
-                            ))
-                        }
-                    }
-                    TokenType::Slash => {
-                        if is_number(&left) && is_number(&right) {
-                            let right_number = get_number(&right);
-                            if right_number == 0.0 {
-                                Err(RuntimeError::new("Division by zero.".to_string(), op.line))
-                            } else {
-                                Ok(Value::Number(get_number(&left) / get_number(&right)))
-                            }
-                        } else {
-                            Err(RuntimeError::new(
-                                "Operands must be numbers.".to_string(),
-                                op.line,
-                            ))
-                        }
-                    }
-                    TokenType::Greater => compare_values(&left, &right, |l, r| l > r),
-                    TokenType::GreaterEqual => compare_values(&left, &right, |l, r| l >= r),
-                    TokenType::Less => compare_values(&left, &right, |l, r| l < r),
-                    TokenType::LessEqual => compare_values(&left, &right, |l, r| l <= r),
-                    TokenType::EqualEqual => {
-                        let result = compare_equality(&left, &right);
-                        Ok(Value::Bool(result))
-                    }
-                    TokenType::BangEqual => {
-                        let result = compare_equality(&left, &right);
-                        Ok(Value::Bool(!result))
-                    }
-                    _ => Err(RuntimeError::new("Unimplemented".to_string(), op.line)),
-                }
-            }
-            _ => panic!("Not implemented"),
+pub fn evaluate_stmt(stmt: &Stmt) -> Result<(), RuntimeError> {
+    match stmt {
+        Stmt::Print(expr) => {
+            let value = evaluate_expr(expr)?;
+            println!("{}", value);
+            Ok(())
         }
-    }
-    fn is_truthy(&self, val: &Value) -> bool {
-        match val {
-            Value::Bool(b) => *b,
-            Value::Nil => false,
-            _ => true,
+        Stmt::Expression(expr) => {
+            let value = evaluate_expr(expr)?;
+            println!("{}", value);
+            Ok(())
         }
+        _ => Err(RuntimeError::new("Not implemented".to_string(), 0)),
     }
 }
 
+pub fn evaluate_expr(expr: &Expr) -> Result<Value, RuntimeError> {
+    match expr {
+        Expr::Literal(lit) => {
+            let val = match lit {
+                Literal::Number(n) => Value::Number(*n),
+                Literal::String(s) => Value::String(s.to_string()),
+                Literal::Bool(b) => Value::Bool(*b),
+                Literal::Nil => Value::Nil,
+            };
+            Ok(val)
+        }
+        Expr::Grouping(expr) => evaluate_expr(expr),
+        Expr::Unary(op, expr) => {
+            let right = evaluate_expr(expr)?;
+            match op.token_type {
+                TokenType::Minus => {
+                    if let Value::Number(n) = right {
+                        Ok(Value::Number(-n))
+                    } else {
+                        Err(RuntimeError::new(
+                            "Invalid operand for unary operator".to_string(),
+                            op.line,
+                        ))
+                    }
+                }
+                TokenType::Bang => Ok(Value::Bool(!is_truthy(&right))),
+                _ => Ok(Value::String("Not implemented".to_string())),
+            }
+        }
+        Expr::Binary(left, op, right) => {
+            let left = evaluate_expr(left)?;
+
+            let right = evaluate_expr(right)?;
+            match op.token_type {
+                TokenType::Plus => {
+                    if is_number(&left) && is_number(&right) {
+                        Ok(Value::Number(get_number(&left) + get_number(&right)))
+                    } else if is_string(&left) && is_string(&right) {
+                        Ok(Value::String(format!(
+                            "{}{}",
+                            get_string(&left),
+                            get_string(&right)
+                        )))
+                    } else {
+                        Err(RuntimeError::new(
+                            "Operands must be two numbers or two strings.".to_string(),
+                            op.line,
+                        ))
+                    }
+                }
+                TokenType::Minus => {
+                    if is_number(&left) && is_number(&right) {
+                        Ok(Value::Number(get_number(&left) - get_number(&right)))
+                    } else {
+                        Err(RuntimeError::new(
+                            "Operands must be numbers.".to_string(),
+                            op.line,
+                        ))
+                    }
+                }
+                TokenType::Star => {
+                    if is_number(&left) && is_number(&right) {
+                        Ok(Value::Number(get_number(&left) * get_number(&right)))
+                    } else {
+                        Err(RuntimeError::new(
+                            "Operands must be numbers.".to_string(),
+                            op.line,
+                        ))
+                    }
+                }
+                TokenType::Slash => {
+                    if is_number(&left) && is_number(&right) {
+                        let right_number = get_number(&right);
+                        if right_number == 0.0 {
+                            Err(RuntimeError::new("Division by zero.".to_string(), op.line))
+                        } else {
+                            Ok(Value::Number(get_number(&left) / get_number(&right)))
+                        }
+                    } else {
+                        Err(RuntimeError::new(
+                            "Operands must be numbers.".to_string(),
+                            op.line,
+                        ))
+                    }
+                }
+                TokenType::Greater => compare_values(&left, &right, |l, r| l > r),
+                TokenType::GreaterEqual => compare_values(&left, &right, |l, r| l >= r),
+                TokenType::Less => compare_values(&left, &right, |l, r| l < r),
+                TokenType::LessEqual => compare_values(&left, &right, |l, r| l <= r),
+                TokenType::EqualEqual => {
+                    let result = compare_equality(&left, &right);
+                    Ok(Value::Bool(result))
+                }
+                TokenType::BangEqual => {
+                    let result = compare_equality(&left, &right);
+                    Ok(Value::Bool(!result))
+                }
+                _ => Err(RuntimeError::new("Unimplemented".to_string(), op.line)),
+            }
+        }
+        _ => panic!("Not implemented"),
+    }
+}
+
+fn is_truthy(val: &Value) -> bool {
+    match val {
+        Value::Bool(b) => *b,
+        Value::Nil => false,
+        _ => true,
+    }
+}
 fn is_number(val: &Value) -> bool {
     matches!(val, Value::Number(_))
 }
