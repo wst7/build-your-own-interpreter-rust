@@ -103,9 +103,10 @@ impl Interpreter {
                 Ok(())
             }
             Stmt::While(condition, body) => {
-                let condi = self.evaluate(condition)?;
+              let mut condi = self.evaluate(condition)?;
                 while self.is_truthy(&condi) {
                     self.execute(body)?;
+                    condi = self.evaluate(condition)?;
                 }
                 Ok(())
             }
@@ -263,7 +264,6 @@ impl Interpreter {
                     _ => Err(RuntimeError::new("Not implemented".to_string(), op.line)),
                 }
 
-                // Ok(Value::Bool(self.is_truthy(&left_expr) || self.is_truthy(&right_expr)))
             }
             _ => {
                 panic!("Not implemented")

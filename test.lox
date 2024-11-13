@@ -1,5 +1,5 @@
-var a = "bar";
-var b = "bar";
-(a = false) or (b = true) or (a = "bar");
-print a;
-print b;
+var hello = 0;
+while (hello < 3) {
+  print hello;
+  hello = hello + 1;
+}
