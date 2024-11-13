@@ -11,6 +11,8 @@ pub enum Stmt {
     Var(Token, Option<Expr>),
     Block(Vec<Stmt>),
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
+    While(Expr, Box<Stmt>),
+    // For(Token, Expr, Expr, Box<Stmt>),
 }
 
 impl Display for Stmt {
@@ -33,7 +35,8 @@ impl Display for Stmt {
                 } else {
                     Ok(())
                 }
-            }
+            },
+            Stmt::While(condition, body) => write!(f, "while ({}) {{ {} }}", condition, body),
         }
     }
 }

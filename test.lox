@@ -1,1 +1,5 @@
-if (true) print "baz";
+var a = "bar";
+var b = "bar";
+(a = false) or (b = true) or (a = "bar");
+print a;
+print b;

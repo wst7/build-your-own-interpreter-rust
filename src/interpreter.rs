@@ -1,4 +1,9 @@
-use std::{borrow::BorrowMut, cell::RefCell, fmt::{Display, Formatter}, rc::Rc};
+use std::{
+    borrow::BorrowMut,
+    cell::RefCell,
+    fmt::{Display, Formatter},
+    rc::Rc,
+};
 
 use crate::{
     environment::Environment,
@@ -78,7 +83,10 @@ impl Interpreter {
                     Some(expr) => self.evaluate(expr)?,
                     None => Value::Nil,
                 };
-                self.env.as_ref().borrow_mut().define(name.lexeme.clone(), Some(val));
+                self.env
+                    .as_ref()
+                    .borrow_mut()
+                    .define(name.lexeme.clone(), Some(val));
                 Ok(())
             }
             Stmt::Block(stmts) => {
@@ -91,6 +99,13 @@ impl Interpreter {
                     self.execute(then_branch)?;
                 } else if let Some(else_branch) = else_branch {
                     self.execute(else_branch)?;
+                }
+                Ok(())
+            }
+            Stmt::While(condition, body) => {
+                let condi = self.evaluate(condition)?;
+                while self.is_truthy(&condi) {
+                    self.execute(body)?;
                 }
                 Ok(())
             }
@@ -139,9 +154,9 @@ impl Interpreter {
             }
             Expr::Binary(left, op, right) => {
                 let left = self.evaluate(left)?;
-               
+
                 let right = self.evaluate(right)?;
-               
+
                 match op.token_type {
                     TokenType::Plus => {
                         if self.is_number(&left) && self.is_number(&right) {
@@ -217,17 +232,41 @@ impl Interpreter {
                     _ => Err(RuntimeError::new("Unimplemented".to_string(), op.line)),
                 }
             }
-            Expr::Variable(name) => {
-              Ok(self.env.borrow().get(name)?.unwrap())
-            }
+            Expr::Variable(name) => Ok(self.env.borrow().get(name)?.unwrap()),
             Expr::Assign(name, expr) => {
-              let value = self.evaluate(expr)?;
-              self.env.as_ref().borrow_mut().assign(name, Some(value.clone()))?;
-              Ok(value)
+                let value = self.evaluate(expr)?;
+                self.env
+                    .as_ref()
+                    .borrow_mut()
+                    .assign(name, Some(value.clone()))?;
+                Ok(value)
+            }
+            Expr::Logical(left, op, right) => {
+                let left_expr = self.evaluate(left)?;
+                // right  不能提前计算，可能包含Assign 表达式， 只有在left 是false时，才计算right
+                // let right_expr = self.evaluate(right)?;
+                match op.token_type {
+                    TokenType::Or => {
+                        if self.is_truthy(&left_expr) {
+                            return Ok(left_expr);
+                        }
+                        Ok(self.evaluate(right)?)
+                    }
+
+                    TokenType::And => {
+                        let right_expr = self.evaluate(right)?;
+                        Ok(Value::Bool(
+                            self.is_truthy(&left_expr) && self.is_truthy(&right_expr),
+                        ))
+                    }
+                    _ => Err(RuntimeError::new("Not implemented".to_string(), op.line)),
+                }
+
+                // Ok(Value::Bool(self.is_truthy(&left_expr) || self.is_truthy(&right_expr)))
             }
             _ => {
-              panic!("Not implemented")
-            },
+                panic!("Not implemented")
+            }
         }
     }
 
