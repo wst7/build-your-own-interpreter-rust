@@ -243,21 +243,22 @@ impl Interpreter {
             }
             Expr::Logical(left, op, right) => {
                 let left_expr = self.evaluate(left)?;
-                // right  不能提前计算，可能包含Assign 表达式， 只有在left 是false时，才计算right
+                
                 // let right_expr = self.evaluate(right)?;
                 match op.token_type {
+                    // right  不能提前计算，可能包含Assign 表达式， 只有在left 是false时，才计算right
                     TokenType::Or => {
                         if self.is_truthy(&left_expr) {
                             return Ok(left_expr);
                         }
                         Ok(self.evaluate(right)?)
                     }
-
+                    // right  不能提前计算，可能包含Assign 表达式， 只有在left 是true时，才计算right
                     TokenType::And => {
-                        let right_expr = self.evaluate(right)?;
-                        Ok(Value::Bool(
-                            self.is_truthy(&left_expr) && self.is_truthy(&right_expr),
-                        ))
+                      if !self.is_truthy(&left_expr) {
+                        return Ok(left_expr);
+                      }
+                      Ok(self.evaluate(right)?)
                     }
                     _ => Err(RuntimeError::new("Not implemented".to_string(), op.line)),
                 }
