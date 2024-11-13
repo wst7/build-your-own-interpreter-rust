@@ -103,11 +103,34 @@ impl Interpreter {
                 Ok(())
             }
             Stmt::While(condition, body) => {
-              let mut condi = self.evaluate(condition)?;
+                let mut condi = self.evaluate(condition)?;
                 while self.is_truthy(&condi) {
                     self.execute(body)?;
                     condi = self.evaluate(condition)?;
                 }
+                Ok(())
+            }
+            Stmt::For(initializer, condition, increment, body) => {
+                match initializer {
+                    Some(stmt) => self.execute(stmt)?,
+                    None => (),
+                }
+                match condition {
+                    Some(expr) => {
+                        let mut condi = self.evaluate(expr)?;
+                        while self.is_truthy(&condi) {
+                            self.execute(body)?;
+                            if let Some(increment) = increment {
+                                self.evaluate(increment)?;
+                            }
+                            condi = self.evaluate(expr)?;
+                        }
+                    }
+                    None => {
+                        self.execute(body)?;
+                    },
+                }
+
                 Ok(())
             }
             _ => Err(RuntimeError::new("Not implemented".to_string(), 0)),
@@ -244,7 +267,7 @@ impl Interpreter {
             }
             Expr::Logical(left, op, right) => {
                 let left_expr = self.evaluate(left)?;
-                
+
                 // let right_expr = self.evaluate(right)?;
                 match op.token_type {
                     // right  不能提前计算，可能包含Assign 表达式， 只有在left 是false时，才计算right
@@ -256,14 +279,13 @@ impl Interpreter {
                     }
                     // right  不能提前计算，可能包含Assign 表达式， 只有在left 是true时，才计算right
                     TokenType::And => {
-                      if !self.is_truthy(&left_expr) {
-                        return Ok(left_expr);
-                      }
-                      Ok(self.evaluate(right)?)
+                        if !self.is_truthy(&left_expr) {
+                            return Ok(left_expr);
+                        }
+                        Ok(self.evaluate(right)?)
                     }
                     _ => Err(RuntimeError::new("Not implemented".to_string(), op.line)),
                 }
-
             }
             _ => {
                 panic!("Not implemented")

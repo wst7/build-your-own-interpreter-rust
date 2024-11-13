@@ -12,7 +12,7 @@ pub enum Stmt {
     Block(Vec<Stmt>),
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
     While(Expr, Box<Stmt>),
-    // For(Token, Expr, Expr, Box<Stmt>),
+    For(Option<Box<Stmt>>, Option<Expr>, Option<Expr>, Box<Stmt>),
 }
 
 impl Display for Stmt {
@@ -37,6 +37,9 @@ impl Display for Stmt {
                 }
             },
             Stmt::While(condition, body) => write!(f, "while ({}) {{ {} }}", condition, body),
+            Stmt::For(initializer, condition, increment, body) => {
+                write!(f, "for ({:?}; {:?}; {:?}) {{ {} }}", initializer, condition, increment, body)
+            }
         }
     }
 }

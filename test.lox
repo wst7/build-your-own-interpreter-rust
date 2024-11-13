@@ -1,5 +1,1 @@
-var hello = 0;
-while (hello < 3) {
-  print hello;
-  hello = hello + 1;
-}
+for (;;) var foo;

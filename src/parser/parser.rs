@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
         if self.matches(&[TokenType::Print]) {
             return self.print_statement();
         }
-        
+
         if self.matches(&[TokenType::LeftBrace]) {
             return Ok(Stmt::Block(self.block()?));
         }
@@ -57,6 +57,9 @@ impl<'a> Parser<'a> {
         }
         if self.matches(&[TokenType::While]) {
             return self.while_statement();
+        }
+        if self.matches(&[TokenType::For]) {
+            return self.for_statement();
         }
         self.expression_stmt()
     }
@@ -79,18 +82,46 @@ impl<'a> Parser<'a> {
         self.consume(TokenType::RightParen, "Expect ')' after 'if'.")?;
         let then_branch = self.statement()?;
         let else_branch = if self.matches(&[TokenType::Else]) {
-           Some(Box::new(self.statement()?)) 
+            Some(Box::new(self.statement()?))
         } else {
             None
         };
         Ok(Stmt::If(condition, Box::new(then_branch), else_branch))
     }
     fn while_statement(&mut self) -> Result<Stmt, ParseError> {
-      self.consume(TokenType::LeftParen, "Expect '(' after 'while'.")?;
-      let condition = self.expression()?;
-      self.consume(TokenType::RightParen, "Expect ')' after 'while'.")?;
-      let body = Box::new(self.statement()?);
-      Ok(Stmt::While(condition, body))
+        self.consume(TokenType::LeftParen, "Expect '(' after 'while'.")?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')' after 'while'.")?;
+        let body = Box::new(self.statement()?);
+        Ok(Stmt::While(condition, body))
+    }
+    fn for_statement(&mut self) -> Result<Stmt, ParseError> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.")?;
+        let initializer = if self.matches(&[TokenType::Semicolon]) {
+            None
+        } else if self.matches(&[TokenType::Var]) {
+            Some(Box::new(self.var_declaration()?))
+        } else {
+            Some(Box::new(self.expression_stmt()?))
+        };
+
+        let condition = if !self.check(TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else {
+            Some(Expr::Literal(Literal::Bool(true))) // Default to true if no condition
+        };
+
+        self.consume(TokenType::Semicolon, "Expect ';' after loop condition")?;
+       
+        let increment = if !self.check(TokenType::RightParen) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        
+        self.consume(TokenType::RightParen, "Expect ')' after for clauses.")?;
+        let body = Box::new(self.statement()?);
+        Ok(Stmt::For(initializer, condition, increment, body))
     }
     fn expression_stmt(&mut self) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
@@ -215,7 +246,6 @@ impl<'a> Parser<'a> {
                 self.convert_token_literal(self.previous().clone())?,
             ));
         }
-        // println!("literal {:?}", self.peek());
         Err(ParseError::new("Expect expression.", self.peek().line))
     }
     // *******辅助方法************
