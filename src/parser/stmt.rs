@@ -10,6 +10,7 @@ pub enum Stmt {
     Print(Expr),
     Var(Token, Option<Expr>),
     Block(Vec<Stmt>),
+    If(Expr, Box<Stmt>, Option<Box<Stmt>>),
 }
 
 impl Display for Stmt {
@@ -24,6 +25,14 @@ impl Display for Stmt {
                     write!(f, "{}", stmt)?;
                 }
                 write!(f, "}}")
+            }
+            Stmt::If(condition, then_branch, else_branch) => {
+                write!(f, "if ({}) {{ {} }}", condition, then_branch)?;
+                if let Some(else_branch) = else_branch {
+                    write!(f, " else {{ {} }}", else_branch)
+                } else {
+                    Ok(())
+                }
             }
         }
     }

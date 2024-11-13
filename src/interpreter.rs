@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, fmt::{Display, Formatter}};
+use std::{borrow::BorrowMut, cell::RefCell, fmt::{Display, Formatter}, rc::Rc};
 
 use crate::{
     environment::Environment,
@@ -45,13 +45,13 @@ impl Display for Value {
     }
 }
 pub struct Interpreter {
-    env: Box<Environment>,
+    env: Rc<RefCell<Environment>>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Self {
-            env: Box::new(Environment::new(None)),
+            env: Rc::new(RefCell::new(Environment::new(None))),
         }
     }
     pub fn interpret(&mut self, stmts: Vec<Stmt>) -> Result<(), RuntimeError> {
@@ -78,11 +78,20 @@ impl Interpreter {
                     Some(expr) => self.evaluate(expr)?,
                     None => Value::Nil,
                 };
-                self.env.define(name.lexeme.clone(), Some(val));
+                self.env.as_ref().borrow_mut().define(name.lexeme.clone(), Some(val));
                 Ok(())
             }
             Stmt::Block(stmts) => {
                 self.execute_block(stmts)?;
+                Ok(())
+            }
+            Stmt::If(condition, then_branch, else_branch) => {
+                let condition = self.evaluate(condition)?;
+                if self.is_truthy(&condition) {
+                    self.execute(then_branch)?;
+                } else if let Some(else_branch) = else_branch {
+                    self.execute(else_branch)?;
+                }
                 Ok(())
             }
             _ => Err(RuntimeError::new("Not implemented".to_string(), 0)),
@@ -90,11 +99,12 @@ impl Interpreter {
     }
     fn execute_block(&mut self, stmts: &Vec<Stmt>) -> Result<(), RuntimeError> {
         // let previous = self.env.clone();
-        self.env = Box::new(Environment::new(Some(self.env.as_ref().clone())));
+        self.env = Rc::new(RefCell::new(Environment::new(Some(self.env.clone()))));
         for stmt in stmts {
             self.execute(stmt)?;
         }
-        self.env = self.env.get_enclosing();
+        let previous = self.env.as_ref().borrow_mut().get_enclosing();
+        self.env = previous;
         Ok(())
     }
     // 计算表达式
@@ -208,11 +218,11 @@ impl Interpreter {
                 }
             }
             Expr::Variable(name) => {
-              Ok(self.env.get(name)?.clone().unwrap())
+              Ok(self.env.borrow().get(name)?.unwrap())
             }
             Expr::Assign(name, expr) => {
               let value = self.evaluate(expr)?;
-              self.env.assign(name, Some(value.clone()))?;
+              self.env.as_ref().borrow_mut().assign(name, Some(value.clone()))?;
               Ok(value)
             }
             _ => {

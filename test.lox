@@ -1,13 +1,1 @@
-{
-   var quz = "outer quz";
-   var foo = "outer foo";
-   {
-     quz = "modified quz";
-     var foo = "inner foo";
-     print quz;
-     print foo;
-   }
-   print quz;
-   print foo;
- }
- print foo;
+if (true) print "baz";
