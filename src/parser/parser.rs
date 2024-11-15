@@ -92,6 +92,9 @@ impl<'a> Parser<'a> {
         if self.matches(&[TokenType::For]) {
             return self.for_statement();
         }
+        if self.matches(&[TokenType::Return]) {
+            return self.return_statement();
+        }
         self.expression_stmt()
     }
     fn print_statement(&mut self) -> Result<Stmt, ParseError> {
@@ -154,6 +157,18 @@ impl<'a> Parser<'a> {
         let body = Box::new(self.statement()?);
         Ok(Stmt::For(initializer, condition, increment, body))
     }
+
+    // returnStmt     → "return" expression? ";" ;
+    fn return_statement(&mut self) -> Result<Stmt, ParseError> {
+        let expr = if !self.check(TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::Semicolon, "Expect ';' after return value.")?;
+        Ok(Stmt::Return(expr)) 
+    }
+
     fn expression_stmt(&mut self) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
         if !self.is_at_end() {

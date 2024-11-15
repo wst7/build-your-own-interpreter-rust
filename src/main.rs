@@ -105,6 +105,7 @@ fn main() {
                     std::process::exit(70);
                 }
             };
+            // println!("{:#?}\n", interpreter.env);
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();

@@ -14,6 +14,7 @@ pub enum Stmt {
     While(Expr, Box<Stmt>),
     For(Option<Box<Stmt>>, Option<Expr>, Option<Expr>, Box<Stmt>),
     Function(Token, Vec<Token>, Box<Vec<Stmt>>),
+    Return(Option<Expr>),
 }
 
 impl Display for Stmt {
@@ -48,6 +49,7 @@ impl Display for Stmt {
             Stmt::Function(name, params, body) => {
                 write!(f, "fun {}({:?}) {{ {:?} }}", name.lexeme, params, body)
             }
+            Stmt::Return(expr) => write!(f, "return {:?}", expr),
         }
     }
 }

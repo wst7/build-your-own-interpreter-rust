@@ -14,24 +14,32 @@ use crate::{
     scanner::token::{Token, TokenType},
 };
 
-pub struct RuntimeError {
-    message: String,
-    line: usize,
+#[derive(Debug, Clone)]
+pub enum RuntimeError {
+    Error { message: String, line: usize },
+    Return(Value),
 }
 
 impl RuntimeError {
     pub fn new(message: String, line: usize) -> Self {
-        Self { message, line }
+        Self::Error { message, line }
     }
 }
 
 impl Display for RuntimeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "[line {}] Error: {}", self.line, self.message)
+        match self {
+            RuntimeError::Error { message, line } => {
+                write!(f, "[line {}] Error: {}", line, message)
+            }
+            RuntimeError::Return(value) => {
+                write!(f, "Return {}", value)
+            }
+        }
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Value {
     Number(f64),
     String(String),
@@ -56,16 +64,14 @@ impl Display for Value {
     }
 }
 pub struct Interpreter {
-    env: Rc<RefCell<Environment>>,
+    pub env: Rc<RefCell<Environment>>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         let env = Rc::new(RefCell::new(Environment::new(None)));
         env.as_ref().borrow_mut().define_natives();
-        Self {
-            env: env,
-        }
+        Self { env: env }
     }
     pub fn interpret(&mut self, stmts: Vec<Stmt>) -> Result<(), RuntimeError> {
         for stmt in stmts {
@@ -83,7 +89,6 @@ impl Interpreter {
             }
             Stmt::Expression(expr) => {
                 let value = self.evaluate(expr)?;
-                // println!("{}", value);
                 Ok(())
             }
             Stmt::Var(name, initializer) => {
@@ -98,7 +103,11 @@ impl Interpreter {
                 Ok(())
             }
             Stmt::Block(stmts) => {
+                self.env = Rc::new(RefCell::new(Environment::new(Some(self.env.clone()))));
                 self.execute_block(stmts)?;
+                let previous: Rc<RefCell<Environment>> =
+                    self.env.as_ref().borrow_mut().get_enclosing();
+                self.env = previous;
                 Ok(())
             }
             Stmt::If(condition, then_branch, else_branch) => {
@@ -148,16 +157,20 @@ impl Interpreter {
                     .define(name.lexeme.clone(), Some(function));
                 Ok(())
             }
+            Stmt::Return(expr) => {
+                let value = match expr {
+                    Some(expr) => self.evaluate(expr)?,
+                    None => Value::Nil,
+                };
+                Err(RuntimeError::Return(value))
+            }
             _ => Err(RuntimeError::new("Not implemented".to_string(), 0)),
         }
     }
     fn execute_block(&mut self, stmts: &Vec<Stmt>) -> Result<(), RuntimeError> {
-        self.env = Rc::new(RefCell::new(Environment::new(Some(self.env.clone()))));
         for stmt in stmts {
             self.execute(stmt)?;
         }
-        let previous = self.env.as_ref().borrow_mut().get_enclosing();
-        self.env = previous;
         Ok(())
     }
     // 计算表达式
@@ -332,10 +345,16 @@ impl Interpreter {
                                 .borrow_mut()
                                 .define(param.lexeme.clone(), Some(value));
                         }
-                        self.execute_block(&body)?;
+                        let result = self.execute_block(&body);
+
                         let previous = self.env.as_ref().borrow_mut().get_enclosing();
                         self.env = previous;
-                        Ok(Value::Nil)
+
+                        match result {
+                            Ok(_) => Ok(Value::Nil),
+                            Err(RuntimeError::Return(val)) => Ok(val.clone()),
+                            Err(e) => Err(e),
+                        }
                     }
                     _ => Err(RuntimeError::new(
                         "Can only call functions.".to_string(),

@@ -5,7 +5,7 @@ use crate::{
     scanner::token::Token,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Environment {
     values: HashMap<String, Option<Value>>,
     enclosing: Option<Rc<RefCell<Environment>>>,
