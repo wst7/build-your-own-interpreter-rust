@@ -26,12 +26,11 @@ pub struct Environment {
 // 	•	RefCell 允许在一个不可变的 Rc 包裹中进行可变借用。
 // 	•	这使得在 Rc<RefCell<Environment>> 中，可以安全地借用父环境（enclosing），并允许在解释期间修改 Environment 的内容。
 
-
 impl Environment {
     pub fn new(enclosing: Option<Rc<RefCell<Environment>>>) -> Self {
         Self {
             values: HashMap::new(),
-            enclosing: match  enclosing {
+            enclosing: match enclosing {
                 Some(enclosing) => Some(enclosing),
                 None => None,
             },
@@ -60,16 +59,27 @@ impl Environment {
             return Ok(value.clone());
         }
         if let Some(enclosing) = &self.enclosing {
-          return enclosing.borrow().get(name); // 递归查找父作用域
-      }
+            return enclosing.borrow().get(name); // 递归查找父作用域
+        }
 
         Err(RuntimeError::new(
             format!("Undefined variable '{}'.", &name.lexeme),
             name.line,
         ))
     }
-    pub fn get_enclosing(&self, ) -> Rc<RefCell<Environment>>{
+    pub fn get_enclosing(&self) -> Rc<RefCell<Environment>> {
         self.enclosing.as_ref().unwrap().clone()
     }
 
+    pub fn define_natives(&mut self) {
+        self.define(
+            "clock".to_string(),
+            Some(Value::NativeFunction(|| {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap();
+                Value::Number(now.as_secs_f64())
+            })),
+        );
+    }
 }

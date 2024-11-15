@@ -11,7 +11,7 @@ use crate::{
         expr::{Expr, Literal},
         stmt::Stmt,
     },
-    scanner::token::TokenType,
+    scanner::token::{Token, TokenType},
 };
 
 pub struct RuntimeError {
@@ -37,6 +37,8 @@ pub enum Value {
     String(String),
     Bool(bool),
     Nil,
+    NativeFunction(fn() -> Value),
+    Function(String, Vec<Token>, Vec<Stmt>),
 }
 
 impl Display for Value {
@@ -46,6 +48,10 @@ impl Display for Value {
             Value::String(s) => write!(f, "{}", s),
             Value::Bool(b) => write!(f, "{}", b),
             Value::Nil => write!(f, "nil"),
+            Value::NativeFunction(_) => write!(f, "<fn>"),
+            Value::Function(name, _, _) => {
+                write!(f, "<fn {}>", name)
+            }
         }
     }
 }
@@ -55,8 +61,10 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
+        let env = Rc::new(RefCell::new(Environment::new(None)));
+        env.as_ref().borrow_mut().define_natives();
         Self {
-            env: Rc::new(RefCell::new(Environment::new(None))),
+            env: env,
         }
     }
     pub fn interpret(&mut self, stmts: Vec<Stmt>) -> Result<(), RuntimeError> {
@@ -128,16 +136,22 @@ impl Interpreter {
                     }
                     None => {
                         self.execute(body)?;
-                    },
+                    }
                 }
-
+                Ok(())
+            }
+            Stmt::Function(name, params, body) => {
+                let function = Value::Function(name.lexeme.clone(), params.clone(), body.to_vec());
+                self.env
+                    .as_ref()
+                    .borrow_mut()
+                    .define(name.lexeme.clone(), Some(function));
                 Ok(())
             }
             _ => Err(RuntimeError::new("Not implemented".to_string(), 0)),
         }
     }
     fn execute_block(&mut self, stmts: &Vec<Stmt>) -> Result<(), RuntimeError> {
-        // let previous = self.env.clone();
         self.env = Rc::new(RefCell::new(Environment::new(Some(self.env.clone()))));
         for stmt in stmts {
             self.execute(stmt)?;
@@ -285,6 +299,48 @@ impl Interpreter {
                         Ok(self.evaluate(right)?)
                     }
                     _ => Err(RuntimeError::new("Not implemented".to_string(), op.line)),
+                }
+            }
+            Expr::Call(callee, paren, arguments) => {
+                let val = self.evaluate(callee)?;
+                match val {
+                    Value::NativeFunction(func) => {
+                        if !arguments.is_empty() {
+                            return Err(RuntimeError::new(
+                                "Native function Expected 0 arguments.".to_string(),
+                                paren.line,
+                            ));
+                        }
+                        Ok(func())
+                    }
+                    Value::Function(_, params, body) => {
+                        if arguments.len() != params.len() {
+                            return Err(RuntimeError::new(
+                                format!(
+                                    "Expected {} arguments but got {}. ",
+                                    params.len(),
+                                    arguments.len()
+                                ),
+                                paren.line,
+                            ));
+                        }
+                        self.env = Rc::new(RefCell::new(Environment::new(Some(self.env.clone()))));
+                        for (param, arg) in params.iter().zip(arguments) {
+                            let value = self.evaluate(arg)?;
+                            self.env
+                                .as_ref()
+                                .borrow_mut()
+                                .define(param.lexeme.clone(), Some(value));
+                        }
+                        self.execute_block(&body)?;
+                        let previous = self.env.as_ref().borrow_mut().get_enclosing();
+                        self.env = previous;
+                        Ok(Value::Nil)
+                    }
+                    _ => Err(RuntimeError::new(
+                        "Can only call functions.".to_string(),
+                        paren.line,
+                    )),
                 }
             }
             _ => {

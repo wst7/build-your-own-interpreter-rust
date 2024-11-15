@@ -4,7 +4,7 @@ use crate::scanner::token::Token;
 
 use super::expr::Expr;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Stmt {
     Expression(Expr),
     Print(Expr),
@@ -13,6 +13,7 @@ pub enum Stmt {
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
     While(Expr, Box<Stmt>),
     For(Option<Box<Stmt>>, Option<Expr>, Option<Expr>, Box<Stmt>),
+    Function(Token, Vec<Token>, Box<Vec<Stmt>>),
 }
 
 impl Display for Stmt {
@@ -20,7 +21,7 @@ impl Display for Stmt {
         match self {
             Stmt::Expression(expr) => write!(f, "{}", expr),
             Stmt::Print(expr) => write!(f, "print {}", expr),
-            Stmt::Var(name,expr ) => write!(f, "var {} = {:?}", name.lexeme, expr),
+            Stmt::Var(name, expr) => write!(f, "var {} = {:?}", name.lexeme, expr),
             Stmt::Block(stmts) => {
                 write!(f, "{{")?;
                 for stmt in stmts {
@@ -35,10 +36,17 @@ impl Display for Stmt {
                 } else {
                     Ok(())
                 }
-            },
+            }
             Stmt::While(condition, body) => write!(f, "while ({}) {{ {} }}", condition, body),
             Stmt::For(initializer, condition, increment, body) => {
-                write!(f, "for ({:?}; {:?}; {:?}) {{ {} }}", initializer, condition, increment, body)
+                write!(
+                    f,
+                    "for ({:?}; {:?}; {:?}) {{ {} }}",
+                    initializer, condition, increment, body
+                )
+            }
+            Stmt::Function(name, params, body) => {
+                write!(f, "fun {}({:?}) {{ {:?} }}", name.lexeme, params, body)
             }
         }
     }

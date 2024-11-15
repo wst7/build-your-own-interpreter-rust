@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 
 use crate::scanner::token::Token;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Literal {
     Number(f64),
     String(String),
@@ -10,7 +10,7 @@ pub enum Literal {
     Nil,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Literal(Literal),
     Unary(Token, Box<Expr>),
@@ -19,6 +19,7 @@ pub enum Expr {
     Variable(Token),
     Assign(Token, Box<Expr>),
     Logical(Box<Expr>, Token, Box<Expr>),
+    Call(Box<Expr>, Token, Vec<Expr>),
 }
 
 impl Display for Expr {
@@ -31,6 +32,9 @@ impl Display for Expr {
             Expr::Variable(t) => write!(f, "{}", t.lexeme),
             Expr::Assign(t, e) => write!(f, "({} = {e})", t.lexeme),
             Expr::Logical(l, op, r) => write!(f, "({} {l} {r})", op.lexeme),
+            Expr::Call(callee, paren, args) => {
+                write!(f, "{}({:?})", callee, args)
+            }
         }
     }
 }
