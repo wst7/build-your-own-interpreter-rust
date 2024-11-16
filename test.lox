@@ -1,9 +1,13 @@
- fun fib(n) {
-   if (n < 2) return n;
-   return fib(n - 2) + fib(n - 1);
+fun returnArg(arg) {
+ return arg;
+}
+ 
+fun returnFunCallWithArg(func, arg) {
+   return returnArg(func)(arg);
+}
+ 
+ fun printArg(arg) {
+   print arg;
  }
  
- // var start = clock();
- print fib(10);
- //print fib(10) == 55;
- //print (clock() - start) < 5; // 5 seconds
+returnFunCallWithArg(printArg, "hello");

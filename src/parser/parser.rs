@@ -1,5 +1,7 @@
+use std::{cell::RefCell, rc::Rc};
+
 // Grammar in grammar.txt file
-use crate::scanner::token::{Token, TokenType};
+use crate::{environment::Environment, scanner::token::{Token, TokenType}};
 
 use super::{
     error::ParseError,

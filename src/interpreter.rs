@@ -1,7 +1,5 @@
 use std::{
-    borrow::BorrowMut,
-    cell::RefCell,
-    fmt::{Display, Formatter},
+    fmt::{Debug, Display, Formatter},
     rc::Rc,
 };
 
@@ -46,7 +44,7 @@ pub enum Value {
     Bool(bool),
     Nil,
     NativeFunction(fn() -> Value),
-    Function(String, Vec<Token>, Vec<Stmt>),
+    Function(String, Vec<Token>, Vec<Stmt>, Rc<Environment>),
 }
 
 impl Display for Value {
@@ -57,109 +55,104 @@ impl Display for Value {
             Value::Bool(b) => write!(f, "{}", b),
             Value::Nil => write!(f, "nil"),
             Value::NativeFunction(_) => write!(f, "<fn>"),
-            Value::Function(name, _, _) => {
+            Value::Function(name, _, _, _) => {
                 write!(f, "<fn {}>", name)
             }
         }
     }
 }
 pub struct Interpreter {
-    pub env: Rc<RefCell<Environment>>,
+    pub env: Rc<Environment>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        let env = Rc::new(RefCell::new(Environment::new(None)));
-        env.as_ref().borrow_mut().define_natives();
+        let env = Rc::new(Environment::new(None));
+        env.define_natives();
         Self { env: env }
     }
     pub fn interpret(&mut self, stmts: Vec<Stmt>) -> Result<(), RuntimeError> {
         for stmt in stmts {
-            self.execute(&stmt)?
+            self.execute(&stmt, &Rc::clone(&self.env))?
         }
         Ok(())
     }
     // 执行语句
-    fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
+    fn execute(&mut self, stmt: &Stmt, env: &Rc<Environment>) -> Result<(), RuntimeError> {
         match stmt {
             Stmt::Print(expr) => {
-                let value = self.evaluate(expr)?;
+                let value = self.evaluate(expr, env)?;
                 println!("{}", value);
                 Ok(())
             }
             Stmt::Expression(expr) => {
-                let value = self.evaluate(expr)?;
+                let _ = self.evaluate(expr, env)?;
                 Ok(())
             }
             Stmt::Var(name, initializer) => {
                 let val = match initializer {
-                    Some(expr) => self.evaluate(expr)?,
+                    Some(expr) => self.evaluate(expr, env)?,
                     None => Value::Nil,
                 };
-                self.env
-                    .as_ref()
-                    .borrow_mut()
-                    .define(name.lexeme.clone(), Some(val));
+                env.define(name.lexeme.clone(), Some(val));
                 Ok(())
             }
             Stmt::Block(stmts) => {
-                self.env = Rc::new(RefCell::new(Environment::new(Some(self.env.clone()))));
-                self.execute_block(stmts)?;
-                let previous: Rc<RefCell<Environment>> =
-                    self.env.as_ref().borrow_mut().get_enclosing();
-                self.env = previous;
+                self.execute_block(stmts, env)?;
                 Ok(())
             }
             Stmt::If(condition, then_branch, else_branch) => {
-                let condition = self.evaluate(condition)?;
+                let condition = self.evaluate(condition, env)?;
                 if self.is_truthy(&condition) {
-                    self.execute(then_branch)?;
+                    self.execute(then_branch, env)?;
                 } else if let Some(else_branch) = else_branch {
-                    self.execute(else_branch)?;
+                    self.execute(else_branch, env)?;
                 }
                 Ok(())
             }
             Stmt::While(condition, body) => {
-                let mut condi = self.evaluate(condition)?;
+                let mut condi = self.evaluate(condition, env)?;
                 while self.is_truthy(&condi) {
-                    self.execute(body)?;
-                    condi = self.evaluate(condition)?;
+                    self.execute(body, env)?;
+                    condi = self.evaluate(condition, env)?;
                 }
                 Ok(())
             }
             Stmt::For(initializer, condition, increment, body) => {
                 match initializer {
-                    Some(stmt) => self.execute(stmt)?,
+                    Some(stmt) => self.execute(stmt, env)?,
                     None => (),
                 }
                 match condition {
                     Some(expr) => {
-                        let mut condi = self.evaluate(expr)?;
+                        let mut condi = self.evaluate(expr, env)?;
                         while self.is_truthy(&condi) {
-                            self.execute(body)?;
+                            self.execute(body, env)?;
                             if let Some(increment) = increment {
-                                self.evaluate(increment)?;
+                                self.evaluate(increment, env)?;
                             }
-                            condi = self.evaluate(expr)?;
+                            condi = self.evaluate(expr, env)?;
                         }
                     }
                     None => {
-                        self.execute(body)?;
+                        self.execute(body, env)?;
                     }
                 }
                 Ok(())
             }
             Stmt::Function(name, params, body) => {
-                let function = Value::Function(name.lexeme.clone(), params.clone(), body.to_vec());
-                self.env
-                    .as_ref()
-                    .borrow_mut()
-                    .define(name.lexeme.clone(), Some(function));
+                let function = Value::Function(
+                    name.lexeme.clone(),
+                    params.clone(),
+                    body.to_vec(),
+                    Rc::clone(&env),
+                );
+                env.define(name.lexeme.clone(), Some(function));
                 Ok(())
             }
             Stmt::Return(expr) => {
                 let value = match expr {
-                    Some(expr) => self.evaluate(expr)?,
+                    Some(expr) => self.evaluate(expr, env)?,
                     None => Value::Nil,
                 };
                 Err(RuntimeError::Return(value))
@@ -167,14 +160,19 @@ impl Interpreter {
             _ => Err(RuntimeError::new("Not implemented".to_string(), 0)),
         }
     }
-    fn execute_block(&mut self, stmts: &Vec<Stmt>) -> Result<(), RuntimeError> {
+    fn execute_block(
+        &mut self,
+        stmts: &Vec<Stmt>,
+        env: &Rc<Environment>,
+    ) -> Result<(), RuntimeError> {
+        let env = Rc::new(Environment::new(Some(Rc::clone(env))));
         for stmt in stmts {
-            self.execute(stmt)?;
+            self.execute(stmt, &env)?;
         }
         Ok(())
     }
     // 计算表达式
-    pub fn evaluate(&mut self, expr: &Expr) -> Result<Value, RuntimeError> {
+    pub fn evaluate(&mut self, expr: &Expr, env: &Rc<Environment>) -> Result<Value, RuntimeError> {
         match expr {
             Expr::Literal(lit) => {
                 let val = match lit {
@@ -185,9 +183,9 @@ impl Interpreter {
                 };
                 Ok(val)
             }
-            Expr::Grouping(expr) => self.evaluate(expr),
+            Expr::Grouping(expr) => self.evaluate(expr, env),
             Expr::Unary(op, expr) => {
-                let right = self.evaluate(expr)?;
+                let right = self.evaluate(expr, env)?;
                 match op.token_type {
                     TokenType::Minus => {
                         if let Value::Number(n) = right {
@@ -204,9 +202,9 @@ impl Interpreter {
                 }
             }
             Expr::Binary(left, op, right) => {
-                let left = self.evaluate(left)?;
+                let left = self.evaluate(left, env)?;
 
-                let right = self.evaluate(right)?;
+                let right = self.evaluate(right, env)?;
 
                 match op.token_type {
                     TokenType::Plus => {
@@ -283,17 +281,14 @@ impl Interpreter {
                     _ => Err(RuntimeError::new("Unimplemented".to_string(), op.line)),
                 }
             }
-            Expr::Variable(name) => Ok(self.env.borrow().get(name)?.unwrap()),
+            Expr::Variable(name) => Ok(env.get(name)?.unwrap()),
             Expr::Assign(name, expr) => {
-                let value = self.evaluate(expr)?;
-                self.env
-                    .as_ref()
-                    .borrow_mut()
-                    .assign(name, Some(value.clone()))?;
+                let value = self.evaluate(expr, env)?;
+                env.assign(name, Some(value.clone()))?;
                 Ok(value)
             }
             Expr::Logical(left, op, right) => {
-                let left_expr = self.evaluate(left)?;
+                let left_expr = self.evaluate(left, env)?;
 
                 // let right_expr = self.evaluate(right)?;
                 match op.token_type {
@@ -302,20 +297,20 @@ impl Interpreter {
                         if self.is_truthy(&left_expr) {
                             return Ok(left_expr);
                         }
-                        Ok(self.evaluate(right)?)
+                        Ok(self.evaluate(right, env)?)
                     }
                     // right  不能提前计算，可能包含Assign 表达式， 只有在left 是true时，才计算right
                     TokenType::And => {
                         if !self.is_truthy(&left_expr) {
                             return Ok(left_expr);
                         }
-                        Ok(self.evaluate(right)?)
+                        Ok(self.evaluate(right, env)?)
                     }
                     _ => Err(RuntimeError::new("Not implemented".to_string(), op.line)),
                 }
             }
             Expr::Call(callee, paren, arguments) => {
-                let val = self.evaluate(callee)?;
+                let val = self.evaluate(callee, &env)?;
                 match val {
                     Value::NativeFunction(func) => {
                         if !arguments.is_empty() {
@@ -326,7 +321,7 @@ impl Interpreter {
                         }
                         Ok(func())
                     }
-                    Value::Function(_, params, body) => {
+                    Value::Function(_, params, body, closure) => {
                         if arguments.len() != params.len() {
                             return Err(RuntimeError::new(
                                 format!(
@@ -337,22 +332,18 @@ impl Interpreter {
                                 paren.line,
                             ));
                         }
-                        self.env = Rc::new(RefCell::new(Environment::new(Some(self.env.clone()))));
+                        let func_env = Rc::new(Environment::new(Some(closure.clone())));
                         for (param, arg) in params.iter().zip(arguments) {
-                            let value = self.evaluate(arg)?;
-                            self.env
-                                .as_ref()
-                                .borrow_mut()
-                                .define(param.lexeme.clone(), Some(value));
+                            // 这里花费了很多时间。。。
+                            // 实参的值 必须先计算（基于函数调用时的环境），才能赋值给函数的环境
+                            let value = self.evaluate(arg, &env)?;
+                            func_env.define(param.lexeme.clone(), Some(value));
                         }
-                        let result = self.execute_block(&body);
-
-                        let previous = self.env.as_ref().borrow_mut().get_enclosing();
-                        self.env = previous;
+                        let result = self.execute_block(&body, &func_env);
 
                         match result {
                             Ok(_) => Ok(Value::Nil),
-                            Err(RuntimeError::Return(val)) => Ok(val.clone()),
+                            Err(RuntimeError::Return(val)) => Ok(val),
                             Err(e) => Err(e),
                         }
                     }

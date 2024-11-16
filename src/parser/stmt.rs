@@ -1,6 +1,6 @@
-use std::fmt::Display;
+use std::{cell::RefCell, fmt::Display, rc::Rc};
 
-use crate::scanner::token::Token;
+use crate::{environment::Environment, scanner::token::Token};
 
 use super::expr::Expr;
 

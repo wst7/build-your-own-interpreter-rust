@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::rc::Rc;
 
 mod interpreter;
 mod parser;
@@ -74,7 +75,7 @@ fn main() {
                 }
             };
             let mut interpreter = interpreter::Interpreter::new();
-            let value = match interpreter.evaluate(&ast) {
+            let value = match interpreter.evaluate(&ast, &Rc::clone(&interpreter.env)) {
                 Ok(result) => result,
                 Err(error) => {
                     eprintln!("{}", error);
